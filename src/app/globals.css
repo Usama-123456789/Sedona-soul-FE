@@ -1,0 +1,84 @@
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+:root {
+  color-scheme: light;
+  --background: 38 38% 93%;
+  --foreground: 158 41% 15%;
+  --card: 0 0% 100%;
+  --card-foreground: 158 41% 15%;
+  --popover: 0 0% 100%;
+  --popover-foreground: 158 41% 15%;
+  --primary: 158 46% 13%;
+  --primary-foreground: 40 55% 96%;
+  --secondary: 39 32% 88%;
+  --secondary-foreground: 158 41% 15%;
+  --muted: 39 28% 90%;
+  --muted-foreground: 39 10% 44%;
+  --accent: 18 66% 42%;
+  --accent-foreground: 40 55% 96%;
+  --destructive: 14 73% 45%;
+  --destructive-foreground: 40 55% 96%;
+  --border: 35 31% 86%;
+  --input: 35 31% 86%;
+  --ring: 18 66% 42%;
+  --radius: 1rem;
+
+  --sedona-sand: #f4efe6;
+  --sedona-paper: #fbf7ef;
+  --sedona-pine: #12362c;
+  --sedona-ink: #16352b;
+  --sedona-clay: #b04f24;
+  --sedona-copper: #c0613a;
+  --sedona-sage: #3e7a5e;
+  --sedona-stone: #7c7363;
+  --sedona-taupe: #a89a82;
+  --sedona-blue: #465980;
+}
+
+* {
+  box-sizing: border-box;
+}
+
+html,
+body {
+  min-height: 100%;
+  margin: 0;
+}
+
+body {
+  background: hsl(var(--background));
+  color: hsl(var(--foreground));
+  font-family: var(--font-sans), -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
+  -webkit-font-smoothing: antialiased;
+}
+
+a {
+  color: inherit;
+  text-decoration: none;
+}
+
+@layer base {
+  * {
+    @apply border-border;
+  }
+
+  :focus-visible {
+    @apply outline-none ring-2 ring-ring ring-offset-2 ring-offset-background;
+  }
+}
+
+@layer components {
+  .sedona-page {
+    @apply bg-sedona-sand text-sedona-pineSoft;
+  }
+
+  .sedona-card {
+    @apply rounded-card bg-white shadow-card;
+  }
+
+  .sedona-eyebrow {
+    @apply text-[11px] font-semibold uppercase tracking-[0.16em] text-sedona-taupe;
+  }
+}

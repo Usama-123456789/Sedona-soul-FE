@@ -1,0 +1,6 @@
+<svg width="512" height="512" viewBox="0 0 512 512" fill="none" xmlns="http://www.w3.org/2000/svg">
+  <rect width="512" height="512" rx="112" fill="#12362C"/>
+  <circle cx="256" cy="218" r="88" fill="none" stroke="#E7B27E" stroke-width="14"/>
+  <path d="M256 291c-45-26-72-59-72-101a37 37 0 0 1 72-13 37 37 0 0 1 72 13c0 42-27 75-72 101Z" fill="#C0613A"/>
+  <text x="256" y="386" text-anchor="middle" font-family="Georgia,serif" font-size="52" fill="#F1EDE2">Sedona</text>
+</svg>
