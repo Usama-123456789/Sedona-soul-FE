@@ -47,6 +47,10 @@ body {
   margin: 0;
 }
 
+html {
+  background: hsl(var(--background));
+}
+
 body {
   background: hsl(var(--background));
   color: hsl(var(--foreground));
@@ -57,6 +61,17 @@ body {
 a {
   color: inherit;
   text-decoration: none;
+}
+
+button,
+input,
+textarea,
+select {
+  font: inherit;
+}
+
+::selection {
+  background: rgba(176, 79, 36, 0.22);
 }
 
 @layer base {
@@ -80,5 +95,24 @@ a {
 
   .sedona-eyebrow {
     @apply text-[11px] font-semibold uppercase tracking-[0.16em] text-sedona-taupe;
+  }
+
+  .safe-scroll {
+    -webkit-overflow-scrolling: touch;
+    overscroll-behavior-y: contain;
+    scrollbar-width: none;
+  }
+
+  .safe-scroll::-webkit-scrollbar {
+    display: none;
+  }
+
+  .safe-pwa-inset {
+    padding-left: max(1rem, env(safe-area-inset-left));
+    padding-right: max(1rem, env(safe-area-inset-right));
+  }
+
+  .safe-pwa-bottom {
+    padding-bottom: max(1rem, env(safe-area-inset-bottom));
   }
 }

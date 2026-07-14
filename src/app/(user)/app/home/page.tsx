@@ -1,6 +1,9 @@
 import Link from "next/link";
 import { ArrowRight, Check, Heart, Shield } from "lucide-react";
 
+import { PageShell } from "@/components/layouts/page-shell";
+import { GreetingHeader } from "@/components/shared/greeting-header";
+
 const stats = [
   { value: "12", label: "day regulation streak", tone: "text-[#B04F24]" },
   { value: "7→4", label: "anxiety, last 30 days", tone: "text-[#3E7A5E]" },
@@ -15,16 +18,12 @@ const tools = [
 
 export default function HomePage() {
   return (
-    <div className="px-5 pb-32 pt-8 min-[575px]:px-9 min-[575px]:py-10 lg:px-14 lg:py-12">
-      <div className="mx-auto max-w-[1040px]">
-        <p className="text-[11px] font-semibold uppercase tracking-[0.16em] text-[#A89A82]">Friday, July 10 · Day 24</p>
-        <h1 className="mt-2 font-serif text-[38px] font-normal leading-[1.08] text-[#16352B] min-[575px]:text-[42px]">
-          Good morning, Maya.
-        </h1>
-        <p className="mt-3 max-w-2xl text-[15px] leading-6 text-[#7C7363]">
-          However you&apos;re arriving today, there&apos;s nothing to fix first.
-        </p>
-
+    <PageShell>
+      <GreetingHeader
+        description="However you're arriving today, there's nothing to fix first."
+        eyebrow="Friday, July 10 · Day 24"
+        title="Good morning, Maya."
+      />
         <div className="mt-6 grid gap-4 min-[575px]:grid-cols-2 lg:grid-cols-[1.2fr_1fr]">
           <Link
             className="relative min-h-[210px] overflow-hidden rounded-[26px] bg-[#6F8275] shadow-[0_18px_36px_-18px_rgba(48,30,16,0.34)] min-[575px]:min-h-[240px] lg:min-h-[270px]"
@@ -142,7 +141,6 @@ export default function HomePage() {
             </div>
           </section>
         </div>
-      </div>
-    </div>
+    </PageShell>
   );
 }
