@@ -1,13 +1,16 @@
+import { PageShell } from "@/components/layouts/page-shell";
 import { RoutePlaceholder } from "@/components/placeholders/route-placeholder";
+import { userRouteStates } from "@/components/placeholders/user-route-states";
 
 export default function GuidePage() {
   return (
-    <div className="px-5 py-16 min-[575px]:px-8 min-[575px]:py-8 lg:px-10">
+    <PageShell maxWidth="md">
       <RoutePlaceholder
+        states={userRouteStates.guide}
         eyebrow="Guide"
         title="Workbook-guided chat"
-        description="Route placeholder for the AI guide chat, quick prompts, source references, and recommended next step cards."
+        description="Open workbook-trained chat with suggested prompts, stored conversation memory, safety flags, and recommended next steps."
       />
-    </div>
+    </PageShell>
   );
 }

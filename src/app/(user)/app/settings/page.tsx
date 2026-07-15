@@ -1,13 +1,16 @@
+import { PageShell } from "@/components/layouts/page-shell";
 import { RoutePlaceholder } from "@/components/placeholders/route-placeholder";
+import { userRouteStates } from "@/components/placeholders/user-route-states";
 
 export default function SettingsPage() {
   return (
-    <div className="px-5 py-16 min-[575px]:px-8 min-[575px]:py-8 lg:px-10">
+    <PageShell maxWidth="md">
       <RoutePlaceholder
+        states={userRouteStates.settings}
         eyebrow="Settings"
         title="User settings"
-        description="Route placeholder for account, privacy, consent, and notification settings if included."
+        description="Account profile, privacy, consent, notifications, install status, partner controls, and preferences."
       />
-    </div>
+    </PageShell>
   );
 }

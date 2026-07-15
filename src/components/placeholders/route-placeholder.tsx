@@ -1,15 +1,57 @@
-type RoutePlaceholderProps = {
-  eyebrow: string;
+import type { LucideIcon } from "lucide-react";
+
+import { cn } from "@/lib/utils";
+import { EmptyState } from "@/components/ui/empty-state";
+import { ErrorState } from "@/components/ui/error-state";
+import { LoadingState } from "@/components/ui/loading-state";
+import { GreetingHeader } from "@/components/shared/greeting-header";
+
+type RouteStateCopy = {
   title: string;
   description: string;
 };
 
-export function RoutePlaceholder({ eyebrow, title, description }: RoutePlaceholderProps) {
+type RouteEmptyStateCopy = RouteStateCopy & {
+  icon?: LucideIcon;
+};
+
+type RouteStateGridProps = {
+  loading: RouteStateCopy;
+  empty: RouteEmptyStateCopy;
+  error: RouteStateCopy;
+  className?: string;
+};
+
+type RoutePlaceholderProps = {
+  eyebrow: string;
+  title: string;
+  description: string;
+  states?: RouteStateGridProps;
+  className?: string;
+};
+
+export function RouteStateGrid({ loading, empty, error, className }: RouteStateGridProps) {
   return (
-    <section className="rounded-[24px] bg-white p-6 shadow-[0_18px_40px_-30px_rgba(48,30,16,0.35)]">
-      <p className="text-xs font-semibold uppercase tracking-[0.18em] text-[#A89A82]">{eyebrow}</p>
-      <h1 className="mt-3 font-serif text-4xl font-normal leading-tight text-[#16352B]">{title}</h1>
-      <p className="mt-3 max-w-xl text-sm leading-6 text-[#7C7363]">{description}</p>
+    <div className={cn("grid gap-3 lg:grid-cols-3", className)} aria-label="Screen states">
+      <LoadingState className="min-h-[188px] p-5 shadow-card" description={loading.description} title={loading.title} />
+      <EmptyState
+        className="min-h-[188px] p-5"
+        description={empty.description}
+        icon={empty.icon}
+        title={empty.title}
+      />
+      <ErrorState className="min-h-[188px]" description={error.description} title={error.title} />
+    </div>
+  );
+}
+
+export function RoutePlaceholder({ eyebrow, title, description, states, className }: RoutePlaceholderProps) {
+  return (
+    <section className={cn("space-y-4", className)}>
+      <div className="rounded-[24px] bg-white p-6 shadow-[0_18px_40px_-30px_rgba(48,30,16,0.35)]">
+        <GreetingHeader description={description} eyebrow={eyebrow} title={title} />
+      </div>
+      {states ? <RouteStateGrid {...states} /> : null}
     </section>
   );
 }

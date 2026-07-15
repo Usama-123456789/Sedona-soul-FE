@@ -1,13 +1,16 @@
+import { PageShell } from "@/components/layouts/page-shell";
 import { RoutePlaceholder } from "@/components/placeholders/route-placeholder";
+import { userRouteStates } from "@/components/placeholders/user-route-states";
 
 export default function TodayPage() {
   return (
-    <div className="px-5 py-16 min-[575px]:px-8 min-[575px]:py-8 lg:px-10">
+    <PageShell maxWidth="md">
       <RoutePlaceholder
+        states={userRouteStates.today}
         eyebrow="Today"
         title="Daily check-in"
-        description="Route placeholder for safety gate, 4-5 check-in questions, and recommendation handoff."
+        description="Safety gate, check-in questions, scale ratings, reflection capture, recommendation handoff, and practice logging."
       />
-    </div>
+    </PageShell>
   );
 }

@@ -6,20 +6,27 @@ type PageShellProps = {
   children: ReactNode;
   className?: string;
   maxWidth?: "sm" | "md" | "lg" | "xl" | "full";
+  as?: "div" | "section";
 };
 
 const maxWidthClass = {
   sm: "max-w-xl",
   md: "max-w-3xl",
   lg: "max-w-5xl",
-  xl: "max-w-[1040px]",
+  xl: "max-w-[980px]",
   full: "max-w-none",
 };
 
-export function PageShell({ children, className, maxWidth = "xl" }: PageShellProps) {
+export function PageShell({ children, className, maxWidth = "xl", as: Component = "div" }: PageShellProps) {
   return (
-    <div className={cn("mx-auto w-full px-5 pb-32 pt-8 pwa:px-9 pwa:py-10 lg:px-14 lg:py-12", maxWidthClass[maxWidth], className)}>
+    <Component
+      className={cn(
+        "safe-pwa-inset mx-auto w-full px-5 pb-32 pt-8 pwa:pb-8 pwa:pt-8 md:px-10 lg:px-12 lg:py-10 xl:px-14",
+        maxWidthClass[maxWidth],
+        className,
+      )}
+    >
       {children}
-    </div>
+    </Component>
   );
 }
