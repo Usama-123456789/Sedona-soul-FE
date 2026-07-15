@@ -1,13 +1,16 @@
+import { PageShell } from "@/components/layouts/page-shell";
 import { RoutePlaceholder } from "@/components/placeholders/route-placeholder";
+import { userRouteStates } from "@/components/placeholders/user-route-states";
 
 export default function PartnerPage() {
   return (
-    <div className="px-5 py-16 min-[575px]:px-8 min-[575px]:py-8 lg:px-10">
+    <PageShell maxWidth="md">
       <RoutePlaceholder
+        states={userRouteStates.partner}
         eyebrow="Partner"
         title="Partner and solo path"
-        description="Route placeholder for Shared, Invite, and Solo Path sections with private-by-default sharing."
+        description="Shared, Invite, and Solo Path sections with partner status, agreements, invite code, and private-by-default sharing."
       />
-    </div>
+    </PageShell>
   );
 }

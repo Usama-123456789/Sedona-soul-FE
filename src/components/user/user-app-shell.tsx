@@ -8,7 +8,7 @@ import { UserBottomNavigation, UserSidebar } from "@/components/user/user-naviga
 export function UserAppShell({ children }: { children: ReactNode }) {
   return (
     <MobileAppContainer>
-      <div className="min-h-dvh pwa:flex pwa:h-dvh">
+      <div className="min-h-dvh w-full overflow-hidden bg-sedona-sand pwa:flex pwa:h-full pwa:min-h-0">
         <UserSidebar />
         <SafeScrollArea bottomNav>{children}</SafeScrollArea>
         <UserBottomNavigation />

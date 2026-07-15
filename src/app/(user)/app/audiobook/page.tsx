@@ -1,13 +1,16 @@
+import { PageShell } from "@/components/layouts/page-shell";
 import { RoutePlaceholder } from "@/components/placeholders/route-placeholder";
+import { userRouteStates } from "@/components/placeholders/user-route-states";
 
 export default function AudiobookPage() {
   return (
-    <div className="px-5 py-16 min-[575px]:px-8 min-[575px]:py-8 lg:px-10">
+    <PageShell maxWidth="md">
       <RoutePlaceholder
+        states={userRouteStates.audiobook}
         eyebrow="Audiobook"
         title="Basic in-app player"
-        description="Route placeholder for chapter list, play/pause, seek, speed control, and saved listening position."
+        description="Chapter list, play/pause, seek, speed control, current module audio, and saved listening position."
       />
-    </div>
+    </PageShell>
   );
 }

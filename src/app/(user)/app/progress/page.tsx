@@ -1,13 +1,16 @@
+import { PageShell } from "@/components/layouts/page-shell";
 import { RoutePlaceholder } from "@/components/placeholders/route-placeholder";
+import { userRouteStates } from "@/components/placeholders/user-route-states";
 
 export default function ProgressPage() {
   return (
-    <div className="px-5 py-16 min-[575px]:px-8 min-[575px]:py-8 lg:px-10">
+    <PageShell maxWidth="lg">
       <RoutePlaceholder
+        states={userRouteStates.progress}
         eyebrow="Progress"
         title="Journey progress"
-        description="Route placeholder for phase status, module progress, streaks, assessment changes, and tool completions."
+        description="Phase status, module completion, streaks, assessment changes, practice completions, and reflection progress."
       />
-    </div>
+    </PageShell>
   );
 }

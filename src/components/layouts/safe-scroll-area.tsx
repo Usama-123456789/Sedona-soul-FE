@@ -12,7 +12,7 @@ export function SafeScrollArea({ children, className, bottomNav = false }: SafeS
   return (
     <section
       className={cn(
-        "safe-scroll min-h-dvh flex-1 overflow-y-auto pwa:h-dvh pwa:min-h-0",
+        "safe-scroll min-h-dvh flex-1 overflow-y-auto overscroll-contain pwa:h-full pwa:min-h-0",
         bottomNav && "pb-[calc(6.5rem+env(safe-area-inset-bottom))] pwa:pb-0",
         className,
       )}
