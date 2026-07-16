@@ -1,10 +1,8 @@
 import type { Metadata, Viewport } from "next";
-import { ClerkProvider } from "@clerk/nextjs";
 import { Newsreader } from "next/font/google";
 
 import "./globals.css";
 import { PwaServiceWorker } from "@/components/pwa/pwa-service-worker";
-import { clerkRoutes } from "@/lib/auth/clerk-config";
 
 const newsreader = Newsreader({
   subsets: ["latin"],
@@ -52,18 +50,11 @@ export default function RootLayout({
   children: React.ReactNode;
 }>) {
   return (
-    <ClerkProvider
-      signInFallbackRedirectUrl={clerkRoutes.afterSignInUrl}
-      signInUrl={clerkRoutes.signInUrl}
-      signUpFallbackRedirectUrl={clerkRoutes.afterSignUpUrl}
-      signUpUrl={clerkRoutes.signUpUrl}
-    >
-      <html lang="en" className={newsreader.variable} suppressHydrationWarning>
-        <body suppressHydrationWarning>
-          {children}
-          <PwaServiceWorker />
-        </body>
-      </html>
-    </ClerkProvider>
+    <html lang="en" className={newsreader.variable} suppressHydrationWarning>
+      <body suppressHydrationWarning>
+        {children}
+        <PwaServiceWorker />
+      </body>
+    </html>
   );
 }

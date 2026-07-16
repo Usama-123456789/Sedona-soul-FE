@@ -1,10 +1,16 @@
 import type { ReactNode } from "react";
-import { auth } from "@clerk/nextjs/server";
+import { redirect } from "next/navigation";
 
+import { auth } from "@/auth";
 import { UserAppShell } from "@/components/user/user-app-shell";
+import { signInUrl } from "@/lib/auth/routes";
 
 export default async function AppLayout({ children }: { children: ReactNode }) {
-  await auth.protect();
+  const session = await auth();
+
+  if (!session?.user) {
+    redirect(signInUrl);
+  }
 
   return <UserAppShell>{children}</UserAppShell>;
 }

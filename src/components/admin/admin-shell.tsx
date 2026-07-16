@@ -1,6 +1,8 @@
 import Link from "next/link";
 import type { ReactNode } from "react";
 
+import { LogoutButton } from "@/components/auth/logout-button";
+
 const adminNavItems = [
   { href: "/admin/dashboard", label: "Dashboard" },
   { href: "/admin/content", label: "Content" },
@@ -28,8 +30,9 @@ export function AdminShell({ children }: { children: ReactNode }) {
         </nav>
       </aside>
       <section className="min-w-0 flex-1">
-        <header className="border-b border-[#E4DBCE] bg-white/70 px-6 py-4 backdrop-blur">
+        <header className="flex items-center justify-between gap-4 border-b border-[#E4DBCE] bg-white/70 px-6 py-4 backdrop-blur">
           <p className="text-sm font-semibold text-[#7C7363]">Admin dashboard foundation</p>
+          <LogoutButton className="h-10 border-[#E4DBCE] bg-white px-4 text-sm text-[#7C7363]" />
         </header>
         <div className="p-6">{children}</div>
       </section>

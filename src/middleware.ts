@@ -1,26 +1,70 @@
-import { clerkMiddleware } from "@clerk/nextjs/server";
+import type { NextRequest } from "next/server";
 import { NextResponse } from "next/server";
 
-import { clerkRoutes } from "@/lib/auth/clerk-config";
+import {
+  buildAdminRootRedirect,
+  buildOnboardingRedirect,
+  buildSignedInPublicRedirect,
+  buildSignInRedirect,
+  buildUserAppRootRedirect,
+  hasCompletedOnboarding,
+  isAdminRoute,
+  isAuthRedirectRoute,
+  isAuthRoute,
+  isOnboardingRoute,
+  isUserAppRoute,
+} from "@/lib/auth/route-guards";
 
-const isUserAppRoute = (pathname: string) => pathname === "/app" || pathname.startsWith("/app/");
+export default function middleware(request: NextRequest) {
+  const pathname = request.nextUrl.pathname;
+  const hasSessionCookie = hasAuthSessionCookie(request);
 
-export default clerkMiddleware(async (auth, request) => {
-  if (!isUserAppRoute(request.nextUrl.pathname)) {
-    return NextResponse.next();
+  if (pathname === "/admin") {
+    if (!hasSessionCookie) {
+      return buildSignInRedirect(request);
+    }
+
+    return buildAdminRootRedirect(request);
   }
 
-  const { userId } = await auth();
+  if (pathname === "/app") {
+    if (!hasSessionCookie) {
+      return buildSignInRedirect(request);
+    }
 
-  if (!userId) {
-    const signInUrl = new URL(clerkRoutes.signInUrl, request.url);
-    signInUrl.searchParams.set("redirect_url", request.url);
+    if (!hasCompletedOnboarding(request)) {
+      return buildOnboardingRedirect(request);
+    }
 
-    return NextResponse.redirect(signInUrl);
+    return buildUserAppRootRedirect(request);
+  }
+
+  if (isAuthRoute(pathname) && hasSessionCookie) {
+    return buildSignedInPublicRedirect(request);
+  }
+
+  if (isAuthRedirectRoute(pathname) && !hasSessionCookie) {
+    return buildSignInRedirect(request);
+  }
+
+  if (isOnboardingRoute(pathname)) {
+    if (!hasSessionCookie) {
+      return buildSignInRedirect(request);
+    }
+  }
+
+  if ((isUserAppRoute(pathname) || isAdminRoute(pathname)) && !hasSessionCookie) {
+    return buildSignInRedirect(request);
   }
 
   return NextResponse.next();
-});
+}
+
+function hasAuthSessionCookie(request: NextRequest) {
+  return request.cookies
+    .getAll()
+    .some((cookie) => cookie.name === "authjs.session-token" || cookie.name === "__Secure-authjs.session-token");
+}
 
 export const config = {
   matcher: [
