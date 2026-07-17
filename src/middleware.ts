@@ -3,11 +3,8 @@ import { NextResponse } from "next/server";
 
 import {
   buildAdminRootRedirect,
-  buildOnboardingRedirect,
   buildSignedInPublicRedirect,
   buildSignInRedirect,
-  buildUserAppRootRedirect,
-  hasCompletedOnboarding,
   isAdminRoute,
   isAuthRedirectRoute,
   isAuthRoute,
@@ -32,11 +29,7 @@ export default function middleware(request: NextRequest) {
       return buildSignInRedirect(request);
     }
 
-    if (!hasCompletedOnboarding(request)) {
-      return buildOnboardingRedirect(request);
-    }
-
-    return buildUserAppRootRedirect(request);
+    return buildSignedInPublicRedirect(request);
   }
 
   if (isAuthRoute(pathname) && hasSessionCookie) {

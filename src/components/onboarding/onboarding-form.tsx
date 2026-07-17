@@ -140,10 +140,22 @@ export function OnboardingForm() {
   async function handleSaveBaseline() {
     setIsSaving(true);
     window.localStorage.setItem("sedona_entry_assessment", JSON.stringify(values));
-    markOnboardingComplete();
-    window.setTimeout(() => {
+
+    try {
+      const response = await fetch("/api/onboarding/complete", {
+        method: "POST",
+      });
+
+      if (!response.ok) {
+        throw new Error("Unable to save onboarding completion.");
+      }
+
+      markOnboardingComplete();
       router.push(userAppRoot);
-    }, 350);
+    } catch (error) {
+      console.error(error);
+      setIsSaving(false);
+    }
   }
 
   return (

@@ -58,11 +58,11 @@ export function normalizeAuthError(error: unknown): AuthFormError {
   if (error instanceof Error) {
     const message = error.message.toLowerCase();
 
-    if (message.includes("already") || message.includes("exists") || message.includes("duplicate")) {
+    if (message.includes("duplicate_email") || message.includes("already") || message.includes("exists") || message.includes("duplicate")) {
       return { code: "duplicate_email" };
     }
 
-    if (message.includes("password") || message.includes("credential")) {
+    if (message.includes("invalid_credentials") || message.includes("password") || message.includes("credential")) {
       return { code: "wrong_password" };
     }
 

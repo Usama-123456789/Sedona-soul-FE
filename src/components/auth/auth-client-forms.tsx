@@ -5,6 +5,7 @@ import Link from "next/link";
 import { signIn } from "next-auth/react";
 
 import {
+  AuthDivider,
   AuthFormAlert,
   AuthFormCard,
   AuthPrimaryButton,
@@ -16,11 +17,13 @@ import {
   getAuthErrorMessage,
   normalizeAuthError,
   validateEmail,
+  validateFirstName,
   validatePassword,
   validateResetCode,
+  validateRequired,
 } from "@/lib/auth/auth-form-validation";
 import { authProviderIds } from "@/lib/auth/next-auth-config";
-import { authRedirectRoot, onboardingRoot } from "@/lib/auth/routes";
+import { authRedirectRoot } from "@/lib/auth/routes";
 import {
   submitMockForgotPassword,
   submitMockResetPassword,
@@ -34,14 +37,15 @@ interface FormAlertState {
   message: string;
 }
 
-type OAuthErrors = Partial<Record<"email", string>>;
+type LoginErrors = Partial<Record<"email" | "password", string>>;
+type SignupErrors = Partial<Record<"firstName" | "email" | "password", string>>;
 type ForgotErrors = Partial<Record<"email", string>>;
 type ResetErrors = Partial<Record<"resetCode" | "password" | "confirmPassword", string>>;
 
 export function LoginAuthForm() {
   return (
     <AuthFormCard mode="login">
-      <OAuthAuthForm defaultRedirectTo={authRedirectRoot} mode="login" />
+      <LoginPasswordForm />
     </AuthFormCard>
   );
 }
@@ -49,19 +53,67 @@ export function LoginAuthForm() {
 export function SignupAuthForm() {
   return (
     <AuthFormCard mode="signup">
-      <OAuthAuthForm defaultRedirectTo={onboardingRoot} mode="signup" />
+      <SignupPasswordForm />
     </AuthFormCard>
   );
 }
 
-function OAuthAuthForm({ defaultRedirectTo, mode }: { defaultRedirectTo: string; mode: "login" | "signup" }) {
+function LoginPasswordForm() {
   const [email, setEmail] = useState("");
-  const [errors, setErrors] = useState<OAuthErrors>({});
+  const [password, setPassword] = useState("");
+  const [showPassword, setShowPassword] = useState(false);
+  const [errors, setErrors] = useState<LoginErrors>({});
   const [alert, setAlert] = useState<FormAlertState | null>(null);
+  const [isSubmitting, setIsSubmitting] = useState(false);
   const [loadingProvider, setLoadingProvider] = useState<OAuthProvider | null>(null);
+  const isBusy = isSubmitting || Boolean(loadingProvider);
+
+  async function handleSubmit(event: FormEvent<HTMLFormElement>) {
+    event.preventDefault();
+
+    const nextErrors: LoginErrors = {
+      email: validateEmail(email),
+      password: validateRequired(password, "Password"),
+    };
+
+    if (hasErrors(nextErrors)) {
+      setErrors(nextErrors);
+      setAlert({ status: "error", message: "Please fix the highlighted fields." });
+      return;
+    }
+
+    setErrors({});
+    setAlert(null);
+    setIsSubmitting(true);
+
+    try {
+      const result = await signIn("credentials", {
+        email,
+        password,
+        redirect: false,
+        authMode: "login",
+      });
+
+      if (result?.error) {
+        throw new Error(result.code ?? result.error);
+      }
+
+      window.location.assign(getRedirectTarget(authRedirectRoot));
+    } catch (error) {
+      const authError = normalizeAuthError(error);
+
+      if (authError.code === "wrong_password") {
+        setErrors({ password: "Check your password and try again." });
+      }
+
+      setAlert({ status: "error", message: getAuthErrorMessage(authError) });
+    } finally {
+      setIsSubmitting(false);
+    }
+  }
 
   async function handleProviderSignIn(provider: OAuthProvider) {
-    const nextErrors: OAuthErrors = {
+    const nextErrors: LoginErrors = {
       email: validateOptionalEmail(email),
     };
 
@@ -76,7 +128,7 @@ function OAuthAuthForm({ defaultRedirectTo, mode }: { defaultRedirectTo: string;
     setLoadingProvider(provider);
 
     try {
-      await signIn(provider, { redirectTo: getRedirectTarget(defaultRedirectTo) }, getAuthorizationParams(provider, email));
+      await signIn(provider, { redirectTo: getRedirectTarget(authRedirectRoot) }, getAuthorizationParams(provider, email));
     } catch (error) {
       const authError = normalizeAuthError(error);
       setAlert({ status: "error", message: getAuthErrorMessage(authError) });
@@ -86,15 +138,15 @@ function OAuthAuthForm({ defaultRedirectTo, mode }: { defaultRedirectTo: string;
 
   return (
     <>
-      <form className="space-y-4" noValidate onSubmit={(event) => event.preventDefault()}>
+      <form className="space-y-3" noValidate onSubmit={handleSubmit}>
         <AuthFormAlert message={alert?.message} variant={alert?.status === "success" ? "success" : "error"} />
         <AuthTextField
           autoComplete="email"
-          disabled={Boolean(loadingProvider)}
+          disabled={isBusy}
           error={errors.email}
-          id={`${mode}-email`}
+          id="login-email"
           label="Email"
-          onBlur={() => setErrors((current) => ({ ...current, email: validateOptionalEmail(email) }))}
+          onBlur={() => setErrors((current) => ({ ...current, email: validateEmail(email) }))}
           onChange={(event) => {
             setEmail(event.target.value);
             setErrors((current) => ({ ...current, email: undefined }));
@@ -103,19 +155,205 @@ function OAuthAuthForm({ defaultRedirectTo, mode }: { defaultRedirectTo: string;
           type="email"
           value={email}
         />
+        <div className="space-y-2">
+          <AuthTextField
+            autoComplete="current-password"
+            disabled={isBusy}
+            error={errors.password}
+            id="login-password"
+            label="Password"
+            onBlur={() => setErrors((current) => ({ ...current, password: validateRequired(password, "Password") }))}
+            onChange={(event) => {
+              setPassword(event.target.value);
+              setErrors((current) => ({ ...current, password: undefined }));
+            }}
+            placeholder="Password"
+            trailing={
+              <PasswordVisibilityButton
+                disabled={isBusy}
+                isVisible={showPassword}
+                onToggle={() => setShowPassword((current) => !current)}
+              />
+            }
+            type={showPassword ? "text" : "password"}
+            value={password}
+          />
+          <div className="flex justify-end">
+            <Link
+              className="text-xs font-bold text-sedona-clay transition-colors hover:text-sedona-clayDark sm:text-sm"
+              href="/forgot-password"
+            >
+              Forgot password?
+            </Link>
+          </div>
+        </div>
+        <AuthPrimaryButton disabled={isBusy} isLoading={isSubmitting} loadingLabel="Signing in...">
+          Sign in
+        </AuthPrimaryButton>
+      </form>
+      <div className="mt-5 space-y-4">
+        <AuthDivider />
         <SocialAuthButtons
+          disabled={isSubmitting}
           loadingProvider={loadingProvider}
-          onAppleSignIn={() => handleProviderSignIn(authProviderIds.apple)}
+          onAppleSignIn={() => setAlert({ status: "error", message: "Apple sign in is not connected yet." })}
           onGoogleSignIn={() => handleProviderSignIn(authProviderIds.google)}
         />
+      </div>
+    </>
+  );
+}
+
+function SignupPasswordForm() {
+  const [firstName, setFirstName] = useState("");
+  const [email, setEmail] = useState("");
+  const [password, setPassword] = useState("");
+  const [showPassword, setShowPassword] = useState(false);
+  const [errors, setErrors] = useState<SignupErrors>({});
+  const [alert, setAlert] = useState<FormAlertState | null>(null);
+  const [isSubmitting, setIsSubmitting] = useState(false);
+  const [loadingProvider, setLoadingProvider] = useState<OAuthProvider | null>(null);
+  const isBusy = isSubmitting || Boolean(loadingProvider);
+
+  async function handleSubmit(event: FormEvent<HTMLFormElement>) {
+    event.preventDefault();
+
+    const nextErrors: SignupErrors = {
+      email: validateEmail(email),
+      firstName: validateFirstName(firstName),
+      password: validatePassword(password),
+    };
+
+    if (hasErrors(nextErrors)) {
+      setErrors(nextErrors);
+      setAlert({ status: "error", message: "Please fix the highlighted fields." });
+      return;
+    }
+
+    setErrors({});
+    setAlert(null);
+    setIsSubmitting(true);
+
+    try {
+      const result = await signIn("credentials", {
+        authMode: "signup",
+        email,
+        firstName,
+        password,
+        redirect: false,
+      });
+
+      if (result?.error) {
+        throw new Error(result.code ?? result.error);
+      }
+
+      window.location.assign(getRedirectTarget(authRedirectRoot));
+    } catch (error) {
+      const authError = normalizeAuthError(error);
+
+      if (authError.code === "duplicate_email") {
+        setErrors({ email: "An account already exists for this email." });
+      }
+
+      setAlert({ status: "error", message: getAuthErrorMessage(authError) });
+    } finally {
+      setIsSubmitting(false);
+    }
+  }
+
+  async function handleProviderSignIn(provider: OAuthProvider) {
+    const nextErrors: SignupErrors = {
+      email: validateOptionalEmail(email),
+      firstName: firstName.trim() ? validateFirstName(firstName) : undefined,
+    };
+
+    if (hasErrors(nextErrors)) {
+      setErrors(nextErrors);
+      setAlert({ status: "error", message: "Please fix the highlighted fields or leave optional fields blank." });
+      return;
+    }
+
+    setErrors({});
+    setAlert(null);
+    setLoadingProvider(provider);
+
+    try {
+      await signIn(provider, { redirectTo: getRedirectTarget(authRedirectRoot) }, getAuthorizationParams(provider, email));
+    } catch (error) {
+      const authError = normalizeAuthError(error);
+      setAlert({ status: "error", message: getAuthErrorMessage(authError) });
+      setLoadingProvider(null);
+    }
+  }
+
+  return (
+    <>
+      <form className="space-y-3" noValidate onSubmit={handleSubmit}>
+        <AuthFormAlert message={alert?.message} variant={alert?.status === "success" ? "success" : "error"} />
+        <AuthTextField
+          autoComplete="given-name"
+          disabled={isBusy}
+          error={errors.firstName}
+          id="signup-first-name"
+          label="First name"
+          onBlur={() => setErrors((current) => ({ ...current, firstName: validateFirstName(firstName) }))}
+          onChange={(event) => {
+            setFirstName(event.target.value);
+            setErrors((current) => ({ ...current, firstName: undefined }));
+          }}
+          placeholder="First name"
+          type="text"
+          value={firstName}
+        />
+        <AuthTextField
+          autoComplete="email"
+          disabled={isBusy}
+          error={errors.email}
+          id="signup-email"
+          label="Email"
+          onBlur={() => setErrors((current) => ({ ...current, email: validateEmail(email) }))}
+          onChange={(event) => {
+            setEmail(event.target.value);
+            setErrors((current) => ({ ...current, email: undefined }));
+          }}
+          placeholder="Email"
+          type="email"
+          value={email}
+        />
+        <AuthTextField
+          autoComplete="new-password"
+          disabled={isBusy}
+          error={errors.password}
+          id="signup-password"
+          label="Password"
+          onBlur={() => setErrors((current) => ({ ...current, password: validatePassword(password) }))}
+          onChange={(event) => {
+            setPassword(event.target.value);
+            setErrors((current) => ({ ...current, password: undefined }));
+          }}
+          placeholder="Password"
+          trailing={
+            <PasswordVisibilityButton
+              disabled={isBusy}
+              isVisible={showPassword}
+              onToggle={() => setShowPassword((current) => !current)}
+            />
+          }
+          type={showPassword ? "text" : "password"}
+          value={password}
+        />
+        <AuthPrimaryButton disabled={isBusy} isLoading={isSubmitting} loadingLabel="Creating account...">
+          Create account
+        </AuthPrimaryButton>
       </form>
-      <div className="mt-4 flex justify-center">
-        <Link
-          className="text-xs font-bold text-sedona-clay transition-colors hover:text-sedona-clayDark sm:text-sm"
-          href="/forgot-password"
-        >
-          Need help accessing your account?
-        </Link>
+      <div className="mt-5 space-y-4">
+        <AuthDivider />
+        <SocialAuthButtons
+          disabled={isSubmitting}
+          loadingProvider={loadingProvider}
+          onAppleSignIn={() => setAlert({ status: "error", message: "Apple sign in is not connected yet." })}
+          onGoogleSignIn={() => handleProviderSignIn(authProviderIds.google)}
+        />
       </div>
     </>
   );

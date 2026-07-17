@@ -4,6 +4,7 @@ import Link from "next/link";
 import { usePathname } from "next/navigation";
 import { Heart, Home, LineChart, MessageSquare, Sun } from "lucide-react";
 
+import { LogoutButton } from "@/components/auth/logout-button";
 import { cn } from "@/lib/utils";
 
 export const userNavItems = [
@@ -60,14 +61,21 @@ export function UserSidebar() {
 
       <div className="flex-1" />
 
-      <Link
-        aria-current={isActiveRoute(pathname, "/app/today") ? "page" : undefined}
-        className="flex min-h-14 items-center justify-center gap-3 rounded-[16px] bg-gradient-to-br from-sedona-copper to-[#A2461F] px-3 py-4 text-white shadow-[0_10px_22px_-10px_rgba(160,70,31,0.75)] transition-transform active:scale-[0.98] lg:justify-start lg:px-4"
-        href="/app/today"
-      >
-        <Sun aria-hidden="true" size={22} strokeWidth={1.8} />
-        <span className="hidden text-sm font-semibold lg:inline">Daily check-in</span>
-      </Link>
+      <div className="space-y-2">
+        <LogoutButton
+          className="min-h-12 w-full justify-center rounded-[14px] border-white/10 bg-white/5 px-3 py-3 text-[#E7E4D8] hover:bg-white/10 hover:text-white lg:justify-start lg:px-4"
+          label="Logout"
+          variant="ghost"
+        />
+        <Link
+          aria-current={isActiveRoute(pathname, "/app/today") ? "page" : undefined}
+          className="flex min-h-14 items-center justify-center gap-3 rounded-[16px] bg-gradient-to-br from-sedona-copper to-[#A2461F] px-3 py-4 text-white shadow-[0_10px_22px_-10px_rgba(160,70,31,0.75)] transition-transform active:scale-[0.98] lg:justify-start lg:px-4"
+          href="/app/today"
+        >
+          <Sun aria-hidden="true" size={22} strokeWidth={1.8} />
+          <span className="hidden text-sm font-semibold lg:inline">Daily check-in</span>
+        </Link>
+      </div>
     </aside>
   );
 }
@@ -127,5 +135,17 @@ export function UserBottomNavigation() {
         })}
       </div>
     </nav>
+  );
+}
+
+export function UserMobileLogout() {
+  return (
+    <div className="fixed right-4 top-[max(1rem,env(safe-area-inset-top))] z-40 pwa:hidden">
+      <LogoutButton
+        aria-label="Log out"
+        className="h-11 rounded-full border-sedona-creamLine bg-white/95 px-4 text-xs text-sedona-clay shadow-card backdrop-blur hover:bg-[#FFF8F4]"
+        label="Logout"
+      />
+    </div>
   );
 }

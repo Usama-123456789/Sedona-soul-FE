@@ -216,30 +216,19 @@ interface SocialAuthButtonsProps {
   onGoogleSignIn?: () => void;
 }
 
-export function SocialAuthButtons({
-  disabled,
-  loadingProvider,
-  onAppleSignIn,
-  onGoogleSignIn,
-}: SocialAuthButtonsProps) {
-  const isAppleLoading = loadingProvider === "apple";
+export function SocialAuthButtons({ disabled, loadingProvider, onAppleSignIn, onGoogleSignIn }: SocialAuthButtonsProps) {
   const isGoogleLoading = loadingProvider === "google";
 
   return (
     <div className="space-y-3">
       <Button
-        aria-busy={isAppleLoading ? true : undefined}
-        className="h-[52px] w-full rounded-[16px] bg-sedona-pine text-base font-bold text-white hover:bg-sedona-pineSoft sm:h-[56px]"
+        className="h-[52px] w-full rounded-[16px] bg-sedona-pine text-base font-bold text-white opacity-70 hover:bg-sedona-pine sm:h-[56px]"
         disabled={disabled || Boolean(loadingProvider)}
         onClick={onAppleSignIn}
         type="button"
       >
-        {isAppleLoading ? (
-          <LoaderCircle aria-hidden="true" className="h-5 w-5 animate-spin" />
-        ) : (
-          <Apple aria-hidden="true" className="h-5 w-5 fill-current" />
-        )}
-        {isAppleLoading ? "Connecting to Apple..." : "Continue with Apple"}
+        <Apple aria-hidden="true" className="h-5 w-5 fill-current" />
+        Continue with Apple
       </Button>
       <Button
         aria-busy={isGoogleLoading ? true : undefined}
