@@ -5,7 +5,7 @@ export default function ForgotPasswordPage() {
   return (
     <AuthRecoveryCard
       title="Reset password"
-      description="Enter the email connected to your account and we will send a reset link."
+      description="Enter the email connected to your account and we will send a reset code."
     >
       <ForgotPasswordAuthForm />
     </AuthRecoveryCard>

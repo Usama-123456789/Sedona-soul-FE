@@ -1,7 +1,8 @@
 "use client";
 
-import { type FormEvent, useState } from "react";
+import { type FormEvent, useEffect, useMemo, useState } from "react";
 import Link from "next/link";
+import { useRouter, useSearchParams } from "next/navigation";
 import { signIn } from "next-auth/react";
 
 import {
@@ -25,9 +26,9 @@ import {
 import { authProviderIds } from "@/lib/auth/next-auth-config";
 import { authRedirectRoot } from "@/lib/auth/routes";
 import {
-  submitMockForgotPassword,
-  submitMockResetPassword,
-} from "@/lib/auth/mock-auth-service";
+  submitForgotPassword,
+  submitResetPassword,
+} from "@/lib/auth/password-reset-service";
 
 type FormStatus = "idle" | "error" | "success";
 type OAuthProvider = (typeof authProviderIds)[keyof typeof authProviderIds];
@@ -59,6 +60,8 @@ export function SignupAuthForm() {
 }
 
 function LoginPasswordForm() {
+  const router = useRouter();
+  const searchParams = useSearchParams();
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
   const [showPassword, setShowPassword] = useState(false);
@@ -67,6 +70,14 @@ function LoginPasswordForm() {
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [loadingProvider, setLoadingProvider] = useState<OAuthProvider | null>(null);
   const isBusy = isSubmitting || Boolean(loadingProvider);
+  const flashMessage = searchParams.get("message");
+
+  useEffect(() => {
+    if (flashMessage === "password-reset") {
+      setAlert({ status: "success", message: "Password updated successfully. Please sign in with your new password." });
+      router.replace("/login", { scroll: false });
+    }
+  }, [flashMessage, router]);
 
   async function handleSubmit(event: FormEvent<HTMLFormElement>) {
     event.preventDefault();
@@ -360,6 +371,7 @@ function SignupPasswordForm() {
 }
 
 export function ForgotPasswordAuthForm() {
+  const router = useRouter();
   const [email, setEmail] = useState("");
   const [errors, setErrors] = useState<ForgotErrors>({});
   const [alert, setAlert] = useState<FormAlertState | null>(null);
@@ -383,8 +395,8 @@ export function ForgotPasswordAuthForm() {
     setIsSubmitting(true);
 
     try {
-      const result = await submitMockForgotPassword();
-      setAlert({ status: "success", message: result.message });
+      await submitForgotPassword(email);
+      router.push(`/reset-password?email=${encodeURIComponent(email.trim())}&message=reset-code-sent`);
     } catch (error) {
       const authError = normalizeAuthError(error);
       setAlert({ status: "error", message: getAuthErrorMessage(authError) });
@@ -412,8 +424,8 @@ export function ForgotPasswordAuthForm() {
           type="email"
           value={email}
         />
-        <AuthPrimaryButton disabled={isSubmitting} isLoading={isSubmitting} loadingLabel="Sending link...">
-          Send reset link
+        <AuthPrimaryButton disabled={isSubmitting} isLoading={isSubmitting} loadingLabel="Sending code...">
+          Send reset code
         </AuthPrimaryButton>
       </form>
       <p className="mt-5 text-center text-sm font-semibold text-sedona-stone">
@@ -427,6 +439,8 @@ export function ForgotPasswordAuthForm() {
 }
 
 export function ResetPasswordAuthForm() {
+  const router = useRouter();
+  const searchParams = useSearchParams();
   const [resetCode, setResetCode] = useState("");
   const [password, setPassword] = useState("");
   const [confirmPassword, setConfirmPassword] = useState("");
@@ -435,6 +449,27 @@ export function ResetPasswordAuthForm() {
   const [errors, setErrors] = useState<ResetErrors>({});
   const [alert, setAlert] = useState<FormAlertState | null>(null);
   const [isSubmitting, setIsSubmitting] = useState(false);
+  const initialAlert = useMemo(() => {
+    if (searchParams.get("message") === "reset-code-sent") {
+      return "A reset code has been sent. Check your email and enter it below.";
+    }
+
+    return null;
+  }, [searchParams]);
+
+  useEffect(() => {
+    if (!initialAlert) {
+      return;
+    }
+
+    setAlert({ status: "success", message: initialAlert });
+
+    const nextSearchParams = new URLSearchParams(searchParams);
+    nextSearchParams.delete("message");
+    const queryString = nextSearchParams.toString();
+
+    router.replace(queryString ? `/reset-password?${queryString}` : "/reset-password", { scroll: false });
+  }, [initialAlert, router, searchParams]);
 
   async function handleSubmit(event: FormEvent<HTMLFormElement>) {
     event.preventDefault();
@@ -460,8 +495,8 @@ export function ResetPasswordAuthForm() {
     setIsSubmitting(true);
 
     try {
-      const result = await submitMockResetPassword({ password, resetCode });
-      setAlert({ status: "success", message: result.message });
+      await submitResetPassword({ password, resetCode });
+      router.push("/login?message=password-reset");
     } catch (error) {
       const authError = normalizeAuthError(error);
 

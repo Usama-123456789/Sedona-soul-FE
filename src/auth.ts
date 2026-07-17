@@ -152,6 +152,10 @@ function getCredentialsSigninCode(error: BackendAuthError) {
     return "inactive_account";
   }
 
+  if (error.code === "VALIDATION_ERROR") {
+    return "validation_error";
+  }
+
   if (error.code === "BACKEND_API_URL_MISSING" || error.code === "AUTH_TOKEN_SECRET_MISSING") {
     return "auth_configuration_error";
   }

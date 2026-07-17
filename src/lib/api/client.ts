@@ -1,9 +1,16 @@
 export type ApiResult<T> = {
+  ok?: true;
   data: T;
   message?: string;
 };
 
 export type ApiErrorShape = {
+  ok?: false;
+  error?: {
+    code: string;
+    message: string;
+    details?: unknown;
+  };
   code: string;
   message: string;
   details?: unknown;
@@ -44,11 +51,12 @@ export async function apiRequest<T>(path: string, options: ApiClientOptions = {}
 
   if (!response.ok) {
     const errorPayload = payload as ApiErrorShape | null;
+    const backendError = errorPayload?.error;
 
     throw new ApiClientError({
-      code: errorPayload?.code ?? "REQUEST_FAILED",
-      details: errorPayload?.details,
-      message: errorPayload?.message ?? "Request failed",
+      code: backendError?.code ?? errorPayload?.code ?? "REQUEST_FAILED",
+      details: backendError?.details ?? errorPayload?.details,
+      message: backendError?.message ?? errorPayload?.message ?? "Request failed",
       status: response.status,
     });
   }
