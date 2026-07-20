@@ -56,10 +56,10 @@ export const { auth, handlers, signIn, signOut } = NextAuth({
         token.authProviderUserId = backendUser.authProviderUserId ?? token.sub ?? backendUser.id;
         token.baselineCompleted = backendUser.baselineCompleted;
         token.onboardingComplete = backendUser.onboardingComplete;
-        token.role = backendUser.role ?? getRoleForEmail(token.email);
+        token.role = getRoleForEmail(token.email) === "admin" ? "admin" : backendUser.role ?? "user";
       }
 
-      token.role = token.role ?? getRoleForEmail(token.email);
+      token.role = getRoleForEmail(token.email) === "admin" ? "admin" : token.role ?? "user";
       token.authProvider = token.authProvider ?? "authjs";
       token.authProviderUserId = token.authProviderUserId ?? token.sub ?? "";
 
@@ -129,7 +129,7 @@ export const { auth, handlers, signIn, signOut } = NextAuth({
           image: null,
           name: result.user.preferredName ?? result.user.email,
           onboardingComplete: result.user.onboardingComplete,
-          role: result.user.role,
+          role: getRoleForEmail(result.user.email) === "admin" ? "admin" : result.user.role,
         };
       },
     }),

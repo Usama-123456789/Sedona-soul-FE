@@ -2,6 +2,7 @@ import { redirect } from "next/navigation";
 
 import { auth } from "@/auth";
 import { getBackendCurrentUser, syncBackendUser } from "@/lib/auth/backend-auth";
+import { getRoleForEmail } from "@/lib/auth/admin";
 import { adminRoot, onboardingRoot, signInUrl, userAppRoot } from "@/lib/auth/routes";
 
 export default async function AuthRedirectPage() {
@@ -18,7 +19,7 @@ export default async function AuthRedirectPage() {
       session.user.authProvider === "credentials" ? await getBackendCurrentUser(session) : await syncBackendUser(session);
     const user = result.user;
 
-    if (user.role === "admin") {
+    if (getRoleForEmail(user.email) === "admin" || session.user.role === "admin") {
       redirectTarget = adminRoot;
     } else if (!user.onboardingComplete || !user.baselineCompleted) {
       redirectTarget = onboardingRoot;

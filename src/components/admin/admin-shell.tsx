@@ -1,16 +1,18 @@
 import Link from "next/link";
+import { BarChart3, FileText, Headphones, LayoutDashboard, Settings, ShieldCheck, Users } from "lucide-react";
+import type { LucideIcon } from "lucide-react";
 import type { ReactNode } from "react";
 
 import { LogoutButton } from "@/components/auth/logout-button";
 
-const adminNavItems = [
-  { href: "/admin/dashboard", label: "Dashboard" },
-  { href: "/admin/content", label: "Content" },
-  { href: "/admin/reports", label: "Reports" },
-  { href: "/admin/users", label: "Users" },
-  { href: "/admin/safety", label: "Safety" },
-  { href: "/admin/audio", label: "Audio" },
-  { href: "/admin/settings", label: "Settings" },
+const adminNavItems: Array<{ href: string; icon: LucideIcon; label: string }> = [
+  { href: "/admin/dashboard", icon: LayoutDashboard, label: "Dashboard" },
+  { href: "/admin/content", icon: FileText, label: "Content" },
+  { href: "/admin/reports", icon: BarChart3, label: "Reports" },
+  { href: "/admin/users", icon: Users, label: "Users" },
+  { href: "/admin/safety", icon: ShieldCheck, label: "Safety" },
+  { href: "/admin/audio", icon: Headphones, label: "Audio" },
+  { href: "/admin/settings", icon: Settings, label: "Settings" },
 ];
 
 export function AdminShell({ children }: { children: ReactNode }) {
@@ -22,11 +24,16 @@ export function AdminShell({ children }: { children: ReactNode }) {
           <p className="mt-1 text-xs font-semibold uppercase tracking-[0.16em] text-[#BDB5A6]">Admin</p>
         </div>
         <nav className="space-y-1">
-          {adminNavItems.map((item) => (
-            <Link className="block rounded-xl px-4 py-3 text-sm font-semibold text-[#E7E4D8] hover:bg-white/10" href={item.href} key={item.href}>
-              {item.label}
-            </Link>
-          ))}
+          {adminNavItems.map((item) => {
+            const Icon = item.icon;
+
+            return (
+              <Link className="flex items-center gap-3 rounded-xl px-4 py-3 text-sm font-semibold text-[#E7E4D8] hover:bg-white/10" href={item.href} key={item.href}>
+                <Icon aria-hidden="true" className="size-5 shrink-0 text-[#D9D2C3]" strokeWidth={2} />
+                <span>{item.label}</span>
+              </Link>
+            );
+          })}
         </nav>
       </aside>
       <section className="min-w-0 flex-1">
