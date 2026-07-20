@@ -168,6 +168,7 @@ export default function AdminDashboardPage() {
         })}
       </div>
 
+
       <div className="grid gap-5 xl:grid-cols-[minmax(0,1.35fr)_minmax(360px,0.65fr)]">
         <div className="grid gap-5 lg:grid-cols-2">
           <article className="rounded-[22px] bg-white p-5 shadow-[0_18px_40px_-34px_rgba(48,30,16,0.45)]">
