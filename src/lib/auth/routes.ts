@@ -1,4 +1,4 @@
-export const publicRoutes = ["/login", "/signup", "/forgot-password", "/reset-password", "/onboarding"];
+export const publicRoutes = ["/login", "/signup", "/signup/invite", "/forgot-password", "/reset-password", "/onboarding"];
 
 export const signInUrl = "/login";
 export const signUpUrl = "/signup";

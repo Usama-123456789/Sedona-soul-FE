@@ -10,7 +10,7 @@ import {
   userAppRoot,
 } from "@/lib/auth/routes";
 
-const authRoutes = ["/login", "/signup", "/forgot-password", "/reset-password"];
+const authRoutes = ["/login", "/signup", "/signup/invite", "/forgot-password", "/reset-password"];
 
 export function isAuthRoute(pathname: string) {
   return authRoutes.includes(pathname);
