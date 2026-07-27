@@ -16,6 +16,7 @@ import {
 } from "lucide-react";
 import type { LucideIcon } from "lucide-react";
 
+import { useToast } from "@/hooks/use-toast";
 import { cn } from "@/lib/utils";
 
 type Pagination = {
@@ -278,6 +279,7 @@ const getRangeStartIso = () => {
 };
 
 export default function AdminReportsPage() {
+  const { toast } = useToast();
   const [reportData, setReportData] = useState<ReportData | null>(null);
   const [isLoading, setIsLoading] = useState(true);
   const [errorMessage, setErrorMessage] = useState<string | null>(null);
@@ -321,12 +323,18 @@ export default function AdminReportsPage() {
         report: reportData.report,
       });
     } catch (error) {
-      setErrorMessage(error instanceof Error ? error.message : "Unable to load admin reports.");
+      const message = error instanceof Error ? error.message : "Unable to load admin reports.";
+      setErrorMessage(message);
       setReportData(null);
+      toast({
+        description: message,
+        title: "Reports could not load",
+        variant: "destructive",
+      });
     } finally {
       setIsLoading(false);
     }
-  }, []);
+  }, [toast]);
 
   useEffect(() => {
     void loadReportData();

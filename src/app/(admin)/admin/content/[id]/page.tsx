@@ -23,6 +23,7 @@ import {
 } from "lucide-react";
 import type { LucideIcon } from "lucide-react";
 
+import { useToast } from "@/hooks/use-toast";
 import { cn } from "@/lib/utils";
 
 type ContentType = "workbook" | "book" | "audio" | "video" | "resource";
@@ -215,6 +216,7 @@ const getMetadataText = (auditLog: AdminAuditLog) => {
 };
 
 export default function AdminContentDetailPage() {
+  const { toast } = useToast();
   const params = useParams<{ id?: string | string[] }>();
   const documentId = Array.isArray(params.id) ? params.id[0] : params.id;
   const [document, setDocument] = useState<ContentDocument | null>(null);
@@ -233,7 +235,13 @@ export default function AdminContentDetailPage() {
 
   const loadDocument = useCallback(async () => {
     if (!documentId) {
-      setErrorMessage("Content document id is missing.");
+      const message = "Content document id is missing.";
+      setErrorMessage(message);
+      toast({
+        description: message,
+        title: "Content could not load",
+        variant: "destructive",
+      });
       setIsLoading(false);
       return;
     }
@@ -248,12 +256,18 @@ export default function AdminContentDetailPage() {
       const data = await readApiResponse<{ document: ContentDocument }>(response);
       setDocument(data.document);
     } catch (error) {
-      setErrorMessage(error instanceof Error ? error.message : "Unable to load content document.");
+      const message = error instanceof Error ? error.message : "Unable to load content document.";
+      setErrorMessage(message);
       setDocument({ ...fallbackDocument, id: documentId });
+      toast({
+        description: `${message} Showing local placeholder details for now.`,
+        title: "Content could not load",
+        variant: "destructive",
+      });
     } finally {
       setIsLoading(false);
     }
-  }, [documentId]);
+  }, [documentId, toast]);
 
   const loadAuditLogs = useCallback(async () => {
     if (!documentId) {
@@ -279,12 +293,18 @@ export default function AdminContentDetailPage() {
       const data = await readApiResponse<{ auditLogs: AdminAuditLog[] }>(response);
       setAuditLogs(data.auditLogs);
     } catch (error) {
-      setAuditErrorMessage(error instanceof Error ? error.message : "Unable to load audit activity.");
+      const message = error instanceof Error ? error.message : "Unable to load audit activity.";
+      setAuditErrorMessage(message);
       setAuditLogs([]);
+      toast({
+        description: message,
+        title: "Audit activity unavailable",
+        variant: "destructive",
+      });
     } finally {
       setIsAuditLoading(false);
     }
-  }, [documentId]);
+  }, [documentId, toast]);
 
   useEffect(() => {
     void loadDocument();
@@ -319,9 +339,23 @@ export default function AdminContentDetailPage() {
       });
       const data = await readApiResponse<{ document: ContentDocument }>(response);
       setDocument(data.document);
+      toast({
+        description:
+          nextAction === "publish"
+            ? `${data.document.title} is now visible to the PWA.`
+            : `${data.document.title} is hidden from the PWA.`,
+        title: nextAction === "publish" ? "Content published" : "Content unpublished",
+        variant: "success",
+      });
       await loadAuditLogs();
     } catch (error) {
-      setErrorMessage(error instanceof Error ? error.message : `Unable to ${nextAction} content document.`);
+      const message = error instanceof Error ? error.message : `Unable to ${nextAction} content document.`;
+      setErrorMessage(message);
+      toast({
+        description: message,
+        title: nextAction === "publish" ? "Publish failed" : "Unpublish failed",
+        variant: "destructive",
+      });
     } finally {
       setActionLoading(null);
     }
