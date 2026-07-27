@@ -23,3 +23,11 @@ export async function PATCH(request: Request, { params }: RouteContext) {
     method: "PATCH",
   });
 }
+
+export async function DELETE(_request: Request, { params }: RouteContext) {
+  const { id } = await params;
+
+  return proxyAdminBackend(`/admin/users/${encodeURIComponent(id)}`, {
+    method: "DELETE",
+  });
+}
