@@ -3,6 +3,7 @@ import { Newsreader } from "next/font/google";
 
 import "./globals.css";
 import { PwaServiceWorker } from "@/components/pwa/pwa-service-worker";
+import { Toaster } from "@/components/ui/toaster";
 
 const newsreader = Newsreader({
   subsets: ["latin"],
@@ -53,6 +54,7 @@ export default function RootLayout({
     <html lang="en" className={newsreader.variable} suppressHydrationWarning>
       <body suppressHydrationWarning>
         {children}
+        <Toaster />
         <PwaServiceWorker />
       </body>
     </html>
