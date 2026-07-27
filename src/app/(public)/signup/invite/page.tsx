@@ -7,6 +7,7 @@ import { signIn } from "next-auth/react";
 import { Check, Info, ShieldCheck } from "lucide-react";
 
 import { AuthFormAlert, AuthPrimaryButton, AuthTextField, PasswordVisibilityButton } from "@/components/auth/auth-form-card";
+import { useToast } from "@/hooks/use-toast";
 import { acceptUserInvitation } from "@/lib/auth/invitation-service";
 import { authRedirectRoot } from "@/lib/auth/routes";
 import { cn } from "@/lib/utils";
@@ -29,6 +30,7 @@ const passwordRules = [
 
 export default function InviteSignupPage() {
   const searchParams = useSearchParams();
+  const { toast } = useToast();
   const inviteToken = useMemo(() => searchParams.get("token")?.trim() ?? "", [searchParams]);
   const [preferredName, setPreferredName] = useState("");
   const [password, setPassword] = useState("");
@@ -84,9 +86,20 @@ export default function InviteSignupPage() {
         throw new Error(result.code ?? result.error);
       }
 
+      toast({
+        description: "Your invitation was accepted. We are taking you into Sedona Soul now.",
+        title: "Account created",
+        variant: "success",
+      });
       window.location.assign(authRedirectRoot);
     } catch (error) {
-      setAlert({ status: "error", message: getInviteErrorMessage(error) });
+      const message = getInviteErrorMessage(error);
+      setAlert({ status: "error", message });
+      toast({
+        description: message,
+        title: "Invitation could not be accepted",
+        variant: "destructive",
+      });
     } finally {
       setIsSubmitting(false);
     }
