@@ -29,6 +29,7 @@ import {
   submitForgotPassword,
   submitResetPassword,
 } from "@/lib/auth/password-reset-service";
+import { useToast } from "@/hooks/use-toast";
 
 type FormStatus = "idle" | "error" | "success";
 type OAuthProvider = (typeof authProviderIds)[keyof typeof authProviderIds];
@@ -62,6 +63,7 @@ export function SignupAuthForm() {
 function LoginPasswordForm() {
   const router = useRouter();
   const searchParams = useSearchParams();
+  const { toast } = useToast();
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
   const [showPassword, setShowPassword] = useState(false);
@@ -74,10 +76,16 @@ function LoginPasswordForm() {
 
   useEffect(() => {
     if (flashMessage === "password-reset") {
-      setAlert({ status: "success", message: "Password updated successfully. Please sign in with your new password." });
+      const message = "Password updated successfully. Please sign in with your new password.";
+      setAlert({ status: "success", message });
+      toast({
+        description: message,
+        title: "Password updated",
+        variant: "success",
+      });
       router.replace("/login", { scroll: false });
     }
-  }, [flashMessage, router]);
+  }, [flashMessage, router, toast]);
 
   async function handleSubmit(event: FormEvent<HTMLFormElement>) {
     event.preventDefault();
@@ -117,7 +125,13 @@ function LoginPasswordForm() {
         setErrors({ password: "Check your password and try again." });
       }
 
-      setAlert({ status: "error", message: getAuthErrorMessage(authError) });
+      const message = getAuthErrorMessage(authError);
+      setAlert({ status: "error", message });
+      toast({
+        description: message,
+        title: "Sign in failed",
+        variant: "destructive",
+      });
     } finally {
       setIsSubmitting(false);
     }
@@ -142,7 +156,13 @@ function LoginPasswordForm() {
       await signIn(provider, { redirectTo: getRedirectTarget(authRedirectRoot) }, getAuthorizationParams(provider, email));
     } catch (error) {
       const authError = normalizeAuthError(error);
-      setAlert({ status: "error", message: getAuthErrorMessage(authError) });
+      const message = getAuthErrorMessage(authError);
+      setAlert({ status: "error", message });
+      toast({
+        description: message,
+        title: "Google sign in failed",
+        variant: "destructive",
+      });
       setLoadingProvider(null);
     }
   }
@@ -207,7 +227,15 @@ function LoginPasswordForm() {
         <SocialAuthButtons
           disabled={isSubmitting}
           loadingProvider={loadingProvider}
-          onAppleSignIn={() => setAlert({ status: "error", message: "Apple sign in is not connected yet." })}
+          onAppleSignIn={() => {
+            const message = "Apple sign in is not connected yet.";
+            setAlert({ status: "error", message });
+            toast({
+              description: message,
+              title: "Apple unavailable",
+              variant: "destructive",
+            });
+          }}
           onGoogleSignIn={() => handleProviderSignIn(authProviderIds.google)}
         />
       </div>
@@ -216,6 +244,7 @@ function LoginPasswordForm() {
 }
 
 function SignupPasswordForm() {
+  const { toast } = useToast();
   const [firstName, setFirstName] = useState("");
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
@@ -266,7 +295,13 @@ function SignupPasswordForm() {
         setErrors({ email: "An account already exists for this email." });
       }
 
-      setAlert({ status: "error", message: getAuthErrorMessage(authError) });
+      const message = getAuthErrorMessage(authError);
+      setAlert({ status: "error", message });
+      toast({
+        description: message,
+        title: "Account creation failed",
+        variant: "destructive",
+      });
     } finally {
       setIsSubmitting(false);
     }
@@ -292,7 +327,13 @@ function SignupPasswordForm() {
       await signIn(provider, { redirectTo: getRedirectTarget(authRedirectRoot) }, getAuthorizationParams(provider, email));
     } catch (error) {
       const authError = normalizeAuthError(error);
-      setAlert({ status: "error", message: getAuthErrorMessage(authError) });
+      const message = getAuthErrorMessage(authError);
+      setAlert({ status: "error", message });
+      toast({
+        description: message,
+        title: "Google sign up failed",
+        variant: "destructive",
+      });
       setLoadingProvider(null);
     }
   }
@@ -362,7 +403,15 @@ function SignupPasswordForm() {
         <SocialAuthButtons
           disabled={isSubmitting}
           loadingProvider={loadingProvider}
-          onAppleSignIn={() => setAlert({ status: "error", message: "Apple sign in is not connected yet." })}
+          onAppleSignIn={() => {
+            const message = "Apple sign in is not connected yet.";
+            setAlert({ status: "error", message });
+            toast({
+              description: message,
+              title: "Apple unavailable",
+              variant: "destructive",
+            });
+          }}
           onGoogleSignIn={() => handleProviderSignIn(authProviderIds.google)}
         />
       </div>
@@ -372,6 +421,7 @@ function SignupPasswordForm() {
 
 export function ForgotPasswordAuthForm() {
   const router = useRouter();
+  const { toast } = useToast();
   const [email, setEmail] = useState("");
   const [errors, setErrors] = useState<ForgotErrors>({});
   const [alert, setAlert] = useState<FormAlertState | null>(null);
@@ -399,7 +449,13 @@ export function ForgotPasswordAuthForm() {
       router.push(`/reset-password?email=${encodeURIComponent(email.trim())}&message=reset-code-sent`);
     } catch (error) {
       const authError = normalizeAuthError(error);
-      setAlert({ status: "error", message: getAuthErrorMessage(authError) });
+      const message = getAuthErrorMessage(authError);
+      setAlert({ status: "error", message });
+      toast({
+        description: message,
+        title: "Reset request failed",
+        variant: "destructive",
+      });
     } finally {
       setIsSubmitting(false);
     }
@@ -441,6 +497,7 @@ export function ForgotPasswordAuthForm() {
 export function ResetPasswordAuthForm() {
   const router = useRouter();
   const searchParams = useSearchParams();
+  const { toast } = useToast();
   const [resetCode, setResetCode] = useState("");
   const [password, setPassword] = useState("");
   const [confirmPassword, setConfirmPassword] = useState("");
@@ -463,13 +520,18 @@ export function ResetPasswordAuthForm() {
     }
 
     setAlert({ status: "success", message: initialAlert });
+    toast({
+      description: initialAlert,
+      title: "Reset code sent",
+      variant: "success",
+    });
 
     const nextSearchParams = new URLSearchParams(searchParams);
     nextSearchParams.delete("message");
     const queryString = nextSearchParams.toString();
 
     router.replace(queryString ? `/reset-password?${queryString}` : "/reset-password", { scroll: false });
-  }, [initialAlert, router, searchParams]);
+  }, [initialAlert, router, searchParams, toast]);
 
   async function handleSubmit(event: FormEvent<HTMLFormElement>) {
     event.preventDefault();
@@ -504,7 +566,13 @@ export function ResetPasswordAuthForm() {
         setErrors({ resetCode: getAuthErrorMessage(authError) });
       }
 
-      setAlert({ status: "error", message: getAuthErrorMessage(authError) });
+      const message = getAuthErrorMessage(authError);
+      setAlert({ status: "error", message });
+      toast({
+        description: message,
+        title: "Password reset failed",
+        variant: "destructive",
+      });
     } finally {
       setIsSubmitting(false);
     }

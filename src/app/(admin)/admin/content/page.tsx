@@ -6,7 +6,6 @@ import { useCallback, useEffect, useMemo, useState } from "react";
 import type { FormEvent } from "react";
 import {
   Archive,
-  ArrowRight,
   BookOpen,
   Bot,
   CheckCircle2,
@@ -33,6 +32,7 @@ import {
   DialogTitle,
 } from "@/components/ui/dialog";
 import { Input } from "@/components/ui/input";
+import { useToast } from "@/hooks/use-toast";
 import { cn } from "@/lib/utils";
 
 type ContentType = "workbook" | "book" | "audio" | "video" | "resource";
@@ -331,6 +331,7 @@ const getStatusClasses = (status: ContentStatus) =>
   );
 
 export default function AdminContentPage() {
+  const { toast } = useToast();
   const [documents, setDocuments] = useState<ContentDocument[]>([]);
   const [search, setSearch] = useState("");
   const [typeFilter, setTypeFilter] = useState<"all" | ContentType>("all");
@@ -384,12 +385,18 @@ export default function AdminContentPage() {
 
       setDocuments(data.documents);
     } catch (error) {
-      setErrorMessage(error instanceof Error ? error.message : "Unable to load content documents.");
+      const message = error instanceof Error ? error.message : "Unable to load content documents.";
+      setErrorMessage(message);
       setDocuments(mockDocuments);
+      toast({
+        description: `${message} Showing local placeholder content for now.`,
+        title: "Content could not load",
+        variant: "destructive",
+      });
     } finally {
       setIsLoading(false);
     }
-  }, [phaseFilter, readApiResponse, statusFilter, typeFilter]);
+  }, [phaseFilter, readApiResponse, statusFilter, toast, typeFilter]);
 
   const loadAuditActivity = useCallback(async () => {
     setIsAuditLoading(true);
@@ -408,12 +415,18 @@ export default function AdminContentPage() {
       const data = await readApiResponse<{ auditLogs: AdminAuditLog[] }>(response);
       setAuditActivity(data.auditLogs);
     } catch (error) {
-      setAuditErrorMessage(error instanceof Error ? error.message : "Unable to load audit activity.");
+      const message = error instanceof Error ? error.message : "Unable to load audit activity.";
+      setAuditErrorMessage(message);
       setAuditActivity([]);
+      toast({
+        description: message,
+        title: "Audit activity unavailable",
+        variant: "destructive",
+      });
     } finally {
       setIsAuditLoading(false);
     }
-  }, [readApiResponse]);
+  }, [readApiResponse, toast]);
 
   useEffect(() => {
     void loadDocuments();
@@ -523,9 +536,20 @@ export default function AdminContentPage() {
       setDialogOpen(false);
       setEditingId(null);
       setForm(emptyForm);
+      toast({
+        description: `${data.document.title} was ${editingId ? "updated" : "created"}.`,
+        title: editingId ? "Content updated" : "Content created",
+        variant: "success",
+      });
       await loadAuditActivity();
     } catch (error) {
-      setErrorMessage(error instanceof Error ? error.message : "Unable to save content document.");
+      const message = error instanceof Error ? error.message : "Unable to save content document.";
+      setErrorMessage(message);
+      toast({
+        description: message,
+        title: "Content save failed",
+        variant: "destructive",
+      });
     } finally {
       setIsSaving(false);
     }
@@ -545,10 +569,23 @@ export default function AdminContentPage() {
       const data = await readApiResponse<ContentDocumentResponse>(response);
 
       setDocuments((currentDocuments) => currentDocuments.map((document) => (document.id === id ? data.document : document)));
-      await loadAuditActivity();
+      toast({
+        description:
+          status === "published"
+            ? `${data.document.title} is now visible to the PWA.`
+            : `${data.document.title} is hidden from the PWA.`,
+        title: status === "published" ? "Content published" : "Content unpublished",
+        variant: "success",
+      });
       await loadAuditActivity();
     } catch (error) {
-      setErrorMessage(error instanceof Error ? error.message : "Unable to update content status.");
+      const message = error instanceof Error ? error.message : "Unable to update content status.";
+      setErrorMessage(message);
+      toast({
+        description: message,
+        title: status === "published" ? "Publish failed" : "Unpublish failed",
+        variant: "destructive",
+      });
     }
   };
 
@@ -562,8 +599,19 @@ export default function AdminContentPage() {
       const data = await readApiResponse<ContentDocumentResponse>(response);
 
       setDocuments((currentDocuments) => currentDocuments.map((document) => (document.id === id ? data.document : document)));
+      toast({
+        description: `${data.document.title} was archived.`,
+        title: "Content archived",
+        variant: "success",
+      });
     } catch (error) {
-      setErrorMessage(error instanceof Error ? error.message : "Unable to archive content document.");
+      const message = error instanceof Error ? error.message : "Unable to archive content document.";
+      setErrorMessage(message);
+      toast({
+        description: message,
+        title: "Archive failed",
+        variant: "destructive",
+      });
     }
   };
 
@@ -580,7 +628,13 @@ export default function AdminContentPage() {
         <div className="flex flex-wrap gap-2">
           <Button
             className="h-10 rounded-full border-[#E4DBCE] bg-[#FBF7EF] px-4 text-[#7C7363] hover:border-[#CDBEA8] hover:text-[#16352B]"
-            onClick={() => setSyncState("Knowledge base sync queued")}
+            onClick={() => {
+              setSyncState("Knowledge base sync queued");
+              toast({
+                description: "The admin request has been queued for the future knowledge-base sync workflow.",
+                title: "Knowledge base sync queued",
+              });
+            }}
             type="button"
             variant="outline"
           >
@@ -614,77 +668,6 @@ export default function AdminContentPage() {
             </article>
           );
         })}
-      </div>
-
-      <div className="grid gap-5 xl:grid-cols-[minmax(0,1fr)_minmax(360px,0.58fr)]">
-        <article className="rounded-[22px] bg-white p-5 shadow-[0_18px_40px_-34px_rgba(48,30,16,0.45)]">
-          <div className="flex flex-col gap-3 sm:flex-row sm:items-start sm:justify-between">
-            <div>
-              <p className="sedona-eyebrow">Publishing</p>
-              <h2 className="mt-1 font-serif text-3xl font-normal text-[#16352B]">Content release flow</h2>
-              <p className="mt-1 text-sm leading-6 text-[#7C7363]">Admins can prepare drafts, publish approved content into the PWA, and unpublish anything that needs review.</p>
-            </div>
-            <Link className="inline-flex h-10 items-center justify-center gap-2 rounded-full border border-[#E4DBCE] bg-[#FBF7EF] px-4 text-sm font-semibold text-[#7C7363] transition hover:border-[#CDBEA8] hover:text-[#16352B]" href="/admin/reports">
-              View audit
-              <ArrowRight aria-hidden="true" className="size-4" />
-            </Link>
-          </div>
-          <div className="mt-5 grid gap-3 md:grid-cols-3">
-            {[
-              { label: "Draft", copy: "Admin-only content can be edited before release.", icon: CircleDashed },
-              { label: "Published", copy: "Visible inside the user PWA and ready for KB sync.", icon: CheckCircle2 },
-              { label: "Unpublished", copy: "Removed from user visibility but retained in admin history.", icon: Archive },
-            ].map((item) => {
-              const Icon = item.icon;
-
-              return (
-                <div className="rounded-2xl border border-[#E8DFD1] bg-[#FBF7EF] p-4" key={item.label}>
-                  <span className="flex size-10 items-center justify-center rounded-2xl bg-white text-[#B85028] shadow-sm">
-                    <Icon aria-hidden="true" className="size-5" />
-                  </span>
-                  <p className="mt-4 font-semibold text-[#16352B]">{item.label}</p>
-                  <p className="mt-1 text-sm leading-6 text-[#7C7363]">{item.copy}</p>
-                </div>
-              );
-            })}
-          </div>
-        </article>
-
-        <article className="rounded-[22px] bg-[#12362C] p-5 text-[#F4EFE6] shadow-[0_18px_40px_-34px_rgba(18,54,44,0.55)]">
-          <div className="flex items-start justify-between gap-4">
-            <div>
-              <p className="text-[11px] font-semibold uppercase tracking-[0.16em] text-[#EDB879]">Audit activity</p>
-              <h2 className="mt-1 font-serif text-3xl font-normal">Recent content changes</h2>
-            </div>
-            <span className="flex size-11 items-center justify-center rounded-2xl bg-white/10 text-[#EDB879]">
-              <History aria-hidden="true" className="size-5" />
-            </span>
-          </div>
-          {auditErrorMessage ? (
-            <div className="mt-5 rounded-2xl border border-white/10 bg-white/5 px-4 py-3 text-sm font-semibold text-[#EDB879]">{auditErrorMessage}</div>
-          ) : null}
-
-          <div className="mt-5 space-y-3">
-            {isAuditLoading ? (
-              <div className="rounded-2xl border border-white/10 bg-white/5 px-4 py-5 text-center text-sm font-semibold text-[#C7D1C8]">Loading activity...</div>
-            ) : null}
-
-            {!isAuditLoading && auditActivity.length === 0 ? (
-              <div className="rounded-2xl border border-white/10 bg-white/5 px-4 py-5 text-center text-sm font-semibold text-[#C7D1C8]">No content changes recorded yet.</div>
-            ) : null}
-
-            {!isAuditLoading && auditActivity.map((item) => (
-              <Link className="block rounded-2xl border border-white/10 bg-white/5 px-4 py-3 transition hover:bg-white/10" href={`/admin/content/${item.entityId}`} key={item.id}>
-                <div className="flex items-center justify-between gap-3">
-                  <span className="font-semibold text-white">{formatLabel(item.action)}</span>
-                  <span className="text-xs font-semibold text-[#EDB879]">{formatDateTime(item.createdAt)}</span>
-                </div>
-                <p className="mt-1 truncate text-sm font-medium text-[#C7D1C8]">{getAuditContentText(item, documents)}</p>
-                <span className={cn("mt-3 inline-flex rounded-full px-2.5 py-1 text-xs font-semibold", auditToneClasses[item.action])}>{getAuditStatusText(item)}</span>
-              </Link>
-            ))}
-          </div>
-        </article>
       </div>
 
       <article className="rounded-[22px] bg-white p-5 shadow-[0_18px_40px_-34px_rgba(48,30,16,0.45)]">
@@ -812,6 +795,42 @@ export default function AdminContentPage() {
             <p className="mt-2 text-sm text-[#7C7363]">Try clearing filters or add a new content document.</p>
           </div>
         ) : null}
+      </article>
+
+      <article className="rounded-[22px] bg-[#12362C] p-5 text-[#F4EFE6] shadow-[0_18px_40px_-34px_rgba(18,54,44,0.55)]">
+        <div className="flex items-start justify-between gap-4">
+          <div>
+            <p className="text-[11px] font-semibold uppercase tracking-[0.16em] text-[#EDB879]">Audit activity</p>
+            <h2 className="mt-1 font-serif text-3xl font-normal">Recent content changes</h2>
+          </div>
+          <span className="flex size-11 items-center justify-center rounded-2xl bg-white/10 text-[#EDB879]">
+            <History aria-hidden="true" className="size-5" />
+          </span>
+        </div>
+        {auditErrorMessage ? (
+          <div className="mt-5 rounded-2xl border border-white/10 bg-white/5 px-4 py-3 text-sm font-semibold text-[#EDB879]">{auditErrorMessage}</div>
+        ) : null}
+
+        <div className="mt-5 space-y-3">
+          {isAuditLoading ? (
+            <div className="rounded-2xl border border-white/10 bg-white/5 px-4 py-5 text-center text-sm font-semibold text-[#C7D1C8]">Loading activity...</div>
+          ) : null}
+
+          {!isAuditLoading && auditActivity.length === 0 ? (
+            <div className="rounded-2xl border border-white/10 bg-white/5 px-4 py-5 text-center text-sm font-semibold text-[#C7D1C8]">No content changes recorded yet.</div>
+          ) : null}
+
+          {!isAuditLoading && auditActivity.map((item) => (
+            <Link className="block rounded-2xl border border-white/10 bg-white/5 px-4 py-3 transition hover:bg-white/10" href={`/admin/content/${item.entityId}`} key={item.id}>
+              <div className="flex items-center justify-between gap-3">
+                <span className="font-semibold text-white">{formatLabel(item.action)}</span>
+                <span className="text-xs font-semibold text-[#EDB879]">{formatDateTime(item.createdAt)}</span>
+              </div>
+              <p className="mt-1 truncate text-sm font-medium text-[#C7D1C8]">{getAuditContentText(item, documents)}</p>
+              <span className={cn("mt-3 inline-flex rounded-full px-2.5 py-1 text-xs font-semibold", auditToneClasses[item.action])}>{getAuditStatusText(item)}</span>
+            </Link>
+          ))}
+        </div>
       </article>
 
 
