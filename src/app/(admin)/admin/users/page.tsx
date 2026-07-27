@@ -3,6 +3,7 @@
 import { type FormEvent, useCallback, useEffect, useMemo, useState } from "react";
 import type { LucideIcon } from "lucide-react";
 import {
+  AlertTriangle,
   CheckCircle2,
   Clock3,
   MailPlus,
@@ -12,6 +13,7 @@ import {
   Search,
   ShieldCheck,
   SlidersHorizontal,
+  Trash2,
   UserCog,
   UserPlus,
   UserRound,
@@ -19,6 +21,15 @@ import {
   XCircle,
 } from "lucide-react";
 
+import {
+  Dialog,
+  DialogContent,
+  DialogDescription,
+  DialogFooter,
+  DialogHeader,
+  DialogTitle,
+} from "@/components/ui/dialog";
+import { useToast } from "@/hooks/use-toast";
 import { cn } from "@/lib/utils";
 
 type UserRole = "admin" | "user";
@@ -263,6 +274,7 @@ const buildUserPatch = (user: AdminUser, form: EditableUserState) => {
 const hasChanges = (patch: object) => Object.keys(patch).length > 0;
 
 export default function AdminUsersPage() {
+  const { toast } = useToast();
   const [users, setUsers] = useState<AdminUser[]>([]);
   const [userPagination, setUserPagination] = useState<Pagination | null>(null);
   const [userFilters, setUserFilters] = useState<UserFilters>(initialUserFilters);
@@ -272,6 +284,8 @@ export default function AdminUsersPage() {
   const [editingUserId, setEditingUserId] = useState<string | null>(null);
   const [editingUser, setEditingUser] = useState<EditableUserState | null>(null);
   const [savingUserId, setSavingUserId] = useState<string | null>(null);
+  const [pendingDeleteUser, setPendingDeleteUser] = useState<AdminUser | null>(null);
+  const [deletingUserId, setDeletingUserId] = useState<string | null>(null);
 
   const [invitations, setInvitations] = useState<UserInvitation[]>([]);
   const [invitationPagination, setInvitationPagination] = useState<Pagination | null>(null);
@@ -283,7 +297,6 @@ export default function AdminUsersPage() {
   const [inviteRole, setInviteRole] = useState<UserRole>("user");
   const [isInviting, setIsInviting] = useState(false);
   const [actingInvitationId, setActingInvitationId] = useState<string | null>(null);
-  const [successMessage, setSuccessMessage] = useState<string | null>(null);
 
   const userQueryParams = useMemo(
     () => ({
@@ -317,13 +330,19 @@ export default function AdminUsersPage() {
       setUsers(data.users);
       setUserPagination(data.pagination);
     } catch (error) {
+      const message = error instanceof Error ? error.message : "Unable to load users.";
       setUsers([]);
       setUserPagination(null);
-      setUsersError(error instanceof Error ? error.message : "Unable to load users.");
+      setUsersError(message);
+      toast({
+        description: message,
+        title: "Users could not load",
+        variant: "destructive",
+      });
     } finally {
       setIsUsersLoading(false);
     }
-  }, [userQueryParams]);
+  }, [toast, userQueryParams]);
 
   const loadInvitations = useCallback(async () => {
     setIsInvitationsLoading(true);
@@ -334,13 +353,19 @@ export default function AdminUsersPage() {
       setInvitations(data.invitations);
       setInvitationPagination(data.pagination);
     } catch (error) {
+      const message = error instanceof Error ? error.message : "Unable to load invitations.";
       setInvitations([]);
       setInvitationPagination(null);
-      setInvitationsError(error instanceof Error ? error.message : "Unable to load invitations.");
+      setInvitationsError(message);
+      toast({
+        description: message,
+        title: "Invitations could not load",
+        variant: "destructive",
+      });
     } finally {
       setIsInvitationsLoading(false);
     }
-  }, [invitationQueryParams]);
+  }, [invitationQueryParams, toast]);
 
   useEffect(() => {
     void loadUsers();
@@ -367,7 +392,6 @@ export default function AdminUsersPage() {
   const startEditing = (user: AdminUser) => {
     setEditingUserId(user.id);
     setEditingUser(toEditableUserState(user));
-    setSuccessMessage(null);
   };
 
   const cancelEditing = () => {
@@ -387,40 +411,84 @@ export default function AdminUsersPage() {
     const patch = buildUserPatch(user, editingUser);
 
     if (!hasChanges(patch)) {
-      setSuccessMessage("No user changes to save.");
+      toast({
+        description: "The selected user fields already match the saved account.",
+        title: "No changes to save",
+      });
       cancelEditing();
       return;
     }
 
     setSavingUserId(user.id);
     setUsersError(null);
-    setSuccessMessage(null);
 
     try {
       await requestJson<{ user: AdminUser }>("/api/admin/users/" + encodeURIComponent(user.id), {
         body: JSON.stringify(patch),
         method: "PATCH",
       });
-      setSuccessMessage("User updated.");
       cancelEditing();
+      toast({
+        description: `${user.pseudonymousUserId} was updated successfully.`,
+        title: "User updated",
+        variant: "success",
+      });
       await loadUsers();
     } catch (error) {
-      setUsersError(error instanceof Error ? error.message : "Unable to update user.");
+      const message = error instanceof Error ? error.message : "Unable to update user.";
+      setUsersError(message);
+      toast({
+        description: message,
+        title: "User update failed",
+        variant: "destructive",
+      });
     } finally {
       setSavingUserId(null);
     }
   };
 
+  const deleteUser = async (user: AdminUser) => {
+    setDeletingUserId(user.id);
+    setUsersError(null);
+
+    try {
+      await requestJson<{ deleted: boolean; user: AdminUser }>("/api/admin/users/" + encodeURIComponent(user.id), {
+        method: "DELETE",
+      });
+      if (editingUserId === user.id) {
+        cancelEditing();
+      }
+      setPendingDeleteUser(null);
+      toast({
+        description: `${user.pseudonymousUserId} was marked as deleted and active sessions were revoked.`,
+        title: "User deleted",
+        variant: "success",
+      });
+      await loadUsers();
+    } catch (error) {
+      const message = error instanceof Error ? error.message : "Unable to delete user.";
+      setUsersError(message);
+      toast({
+        description: message,
+        title: "Delete failed",
+        variant: "destructive",
+      });
+    } finally {
+      setDeletingUserId(null);
+    }
+  };
+
   const createInvitation = async (event: FormEvent<HTMLFormElement>) => {
     event.preventDefault();
+    const normalizedEmail = inviteEmail.trim().toLowerCase();
+
     setIsInviting(true);
     setInvitationsError(null);
-    setSuccessMessage(null);
 
     try {
       await requestJson<{ invitation: UserInvitation }>("/api/admin/users/invitations", {
         body: JSON.stringify({
-          email: inviteEmail.trim().toLowerCase(),
+          email: normalizedEmail,
           role: inviteRole,
         }),
         method: "POST",
@@ -429,10 +497,20 @@ export default function AdminUsersPage() {
       setInviteRole("user");
       setInvitationFilters(initialInvitationFilters);
       setInvitationPage(1);
-      setSuccessMessage("Invitation sent.");
+      toast({
+        description: `Invite email sent to ${normalizedEmail}.`,
+        title: "Invitation sent",
+        variant: "success",
+      });
       await loadInvitations();
     } catch (error) {
-      setInvitationsError(error instanceof Error ? error.message : "Unable to send invitation.");
+      const message = error instanceof Error ? error.message : "Unable to send invitation.";
+      setInvitationsError(message);
+      toast({
+        description: message,
+        title: "Invitation failed",
+        variant: "destructive",
+      });
     } finally {
       setIsInviting(false);
     }
@@ -441,17 +519,29 @@ export default function AdminUsersPage() {
   const actOnInvitation = async (invitation: UserInvitation, action: "resend" | "revoke") => {
     setActingInvitationId(invitation.id);
     setInvitationsError(null);
-    setSuccessMessage(null);
 
     try {
       await requestJson<{ invitation: UserInvitation; resent?: boolean; revoked?: boolean }>(
         "/api/admin/users/invitations/" + encodeURIComponent(invitation.id) + "/" + action,
         { method: "POST" },
       );
-      setSuccessMessage(action === "resend" ? "Invitation resent." : "Invitation revoked.");
+      toast({
+        description:
+          action === "resend"
+            ? `A fresh invite email was sent to ${invitation.email}.`
+            : `${invitation.email} can no longer use that invite link.`,
+        title: action === "resend" ? "Invitation resent" : "Invitation revoked",
+        variant: "success",
+      });
       await loadInvitations();
     } catch (error) {
-      setInvitationsError(error instanceof Error ? error.message : "Unable to " + action + " invitation.");
+      const message = error instanceof Error ? error.message : "Unable to " + action + " invitation.";
+      setInvitationsError(message);
+      toast({
+        description: message,
+        title: action === "resend" ? "Resend failed" : "Revoke failed",
+        variant: "destructive",
+      });
     } finally {
       setActingInvitationId(null);
     }
@@ -479,13 +569,6 @@ export default function AdminUsersPage() {
           Refresh
         </button>
       </div>
-
-      {successMessage ? (
-        <div className="flex items-center gap-2 rounded-[18px] border border-[#C9DECF] bg-[#F2FAF5] px-4 py-3 text-sm font-semibold text-[#3E7A5E]">
-          <CheckCircle2 aria-hidden="true" className="size-4" />
-          {successMessage}
-        </div>
-      ) : null}
 
       <div className="grid gap-4 sm:grid-cols-2 xl:grid-cols-4">
         {metricTiles.map((tile) => (
@@ -565,13 +648,13 @@ export default function AdminUsersPage() {
 
           {usersError ? <ErrorBanner message={usersError} /> : null}
 
-          <div className="mt-5 overflow-hidden rounded-[18px] border border-[#E8DFD1]">
-            <div className="hidden grid-cols-[minmax(240px,1.2fr)_minmax(180px,0.85fr)_minmax(220px,1fr)_minmax(180px,0.8fr)_120px] gap-4 bg-[#F4EFE6] px-4 py-3 text-xs font-semibold uppercase tracking-[0.08em] text-[#A89A82] lg:grid">
+          <div className="mt-5 overflow-x-auto rounded-[18px] border border-[#E8DFD1]">
+            <div className="min-w-[980px]">
+            <div className="hidden grid-cols-[minmax(230px,1.15fr)_minmax(230px,0.95fr)_minmax(230px,1fr)_minmax(250px,0.9fr)] gap-5 bg-[#F4EFE6] px-4 py-3 pr-6 text-xs font-semibold uppercase tracking-[0.08em] text-[#A89A82] lg:grid">
               <span>User</span>
               <span>Account</span>
               <span>Journey</span>
               <span>Progress</span>
-              <span className="text-right">Action</span>
             </div>
 
             <div className="divide-y divide-[#E8DFD1] bg-white">
@@ -583,8 +666,8 @@ export default function AdminUsersPage() {
                   const progressPercent = (Number(user.onboardingComplete) + Number(user.baselineCompleted)) * 50;
 
                   return (
-                    <div className="px-4 py-4 transition hover:bg-[#FBF7EF]/70" key={user.id}>
-                      <div className="grid gap-4 lg:grid-cols-[minmax(240px,1.2fr)_minmax(180px,0.85fr)_minmax(220px,1fr)_minmax(180px,0.8fr)_120px] lg:items-center">
+                    <div className="px-4 py-4 pr-6 transition hover:bg-[#FBF7EF]/70" key={user.id}>
+                      <div className="grid gap-5 lg:grid-cols-[minmax(230px,1.15fr)_minmax(230px,0.95fr)_minmax(230px,1fr)_minmax(250px,0.9fr)] lg:items-center">
                         <div className="flex min-w-0 items-center gap-3">
                           <span className="flex size-11 shrink-0 items-center justify-center rounded-2xl bg-[#F7E5DA] text-[#B85028]">
                             <UserCog aria-hidden="true" className="size-5" />
@@ -598,9 +681,29 @@ export default function AdminUsersPage() {
                           </div>
                         </div>
 
-                        <div className="flex flex-wrap items-center gap-2">
-                          <span className="inline-flex rounded-full bg-[#E4ECE6] px-2.5 py-1 text-xs font-semibold capitalize text-[#12362C]">{user.role}</span>
-                          <StatusBadge status={user.status} />
+                        <div className="space-y-3">
+                          <div className="flex flex-wrap items-center gap-2">
+                            <span className="inline-flex rounded-full bg-[#E4ECE6] px-2.5 py-1 text-xs font-semibold capitalize text-[#12362C]">{user.role}</span>
+                            <StatusBadge status={user.status} />
+                          </div>
+                          <div className="flex flex-wrap items-center gap-2">
+                            <button
+                              className={cn(iconButtonClass, "h-9 border border-[#E4DBCE] bg-[#FBF7EF] px-3 text-xs text-[#7C7363] hover:border-[#CDBEA8] hover:text-[#16352B]", currentEditingUser ? "bg-[#F4EFE6] text-[#16352B]" : null)}
+                              onClick={() => (currentEditingUser ? cancelEditing() : startEditing(user))}
+                              type="button"
+                            >
+                              {currentEditingUser ? "Close edit" : "Edit"}
+                            </button>
+                            <button
+                              className={cn(iconButtonClass, "h-9 border border-[#E8BDA9] bg-[#FFF7F3] px-3 text-xs text-[#B85028] hover:border-[#D89F87] disabled:bg-[#F4EFE6] disabled:text-[#A89A82]")}
+                              disabled={user.status === "deleted" || deletingUserId === user.id}
+                              onClick={() => setPendingDeleteUser(user)}
+                              type="button"
+                            >
+                              <Trash2 aria-hidden="true" className="size-3.5" />
+                              {deletingUserId === user.id ? "Deleting..." : "Delete"}
+                            </button>
+                          </div>
                         </div>
 
                         <div className="min-w-0 rounded-2xl bg-[#FBF7EF] px-3 py-2">
@@ -608,7 +711,7 @@ export default function AdminUsersPage() {
                           <p className="mt-0.5 truncate text-xs font-semibold text-[#A89A82]">{user.currentModule ?? "No module assigned"}</p>
                         </div>
 
-                        <div className="space-y-2">
+                        <div className="min-w-0 space-y-2">
                           <div className="h-2 overflow-hidden rounded-full bg-[#E8DFD1]">
                             <div className="h-full rounded-full bg-[#B85028]" style={{ width: progressPercent + "%" }} />
                           </div>
@@ -616,17 +719,6 @@ export default function AdminUsersPage() {
                             <CompletionChip isComplete={user.onboardingComplete} label="Onboarding" />
                             <CompletionChip isComplete={user.baselineCompleted} label="Baseline" />
                           </div>
-                        </div>
-
-                        <div className="flex items-center justify-between gap-3 lg:justify-end">
-                          <p className="text-xs font-semibold text-[#A89A82] lg:hidden">Last login {formatDateTime(user.lastLoginAt)}</p>
-                          <button
-                            className={cn(iconButtonClass, currentEditingUser ? "border border-[#E4DBCE] bg-[#F4EFE6] text-[#7C7363]" : "border border-[#E4DBCE] bg-[#FBF7EF] text-[#7C7363] hover:border-[#CDBEA8] hover:text-[#16352B]")}
-                            onClick={() => (currentEditingUser ? cancelEditing() : startEditing(user))}
-                            type="button"
-                          >
-                            {currentEditingUser ? "Close" : "Edit"}
-                          </button>
                         </div>
                       </div>
 
@@ -675,6 +767,7 @@ export default function AdminUsersPage() {
                     </div>
                   );
                 })}
+            </div>
             </div>
           </div>
 
@@ -866,6 +959,50 @@ export default function AdminUsersPage() {
           unit="invitations"
         />
       </article>
+
+      <Dialog
+        open={Boolean(pendingDeleteUser)}
+        onOpenChange={(open) => {
+          if (!open && !deletingUserId) {
+            setPendingDeleteUser(null);
+          }
+        }}
+      >
+        <DialogContent className="max-w-md">
+          <DialogHeader>
+            <div className="mb-2 flex size-12 items-center justify-center rounded-2xl bg-[#FFF7F3] text-[#B85028]">
+              <AlertTriangle aria-hidden="true" className="size-6" />
+            </div>
+            <DialogTitle>Delete user?</DialogTitle>
+            <DialogDescription>
+              This will mark {pendingDeleteUser?.pseudonymousUserId ?? "this user"} as deleted and revoke active sessions. The account remains pseudonymized for admin history and reporting.
+            </DialogDescription>
+          </DialogHeader>
+          <DialogFooter>
+            <button
+              className={cn(iconButtonClass, "border border-[#E4DBCE] bg-white text-[#7C7363] hover:text-[#16352B]")}
+              disabled={Boolean(deletingUserId)}
+              onClick={() => setPendingDeleteUser(null)}
+              type="button"
+            >
+              Cancel
+            </button>
+            <button
+              className={cn(iconButtonClass, "bg-[#B85028] text-white hover:bg-[#9D431F]")}
+              disabled={!pendingDeleteUser || Boolean(deletingUserId)}
+              onClick={() => {
+                if (pendingDeleteUser) {
+                  void deleteUser(pendingDeleteUser);
+                }
+              }}
+              type="button"
+            >
+              <Trash2 aria-hidden="true" className="size-4" />
+              {deletingUserId ? "Deleting..." : "Delete user"}
+            </button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
     </section>
   );
 }
