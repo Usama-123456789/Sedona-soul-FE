@@ -16,3 +16,6 @@ Docx/
 # clerk configuration (can include secrets)
 /.clerk/
 package-lock.json
+branch_structure.json
+temp_auto_push.bat
+temp_interactive_push.bat
