@@ -115,4 +115,55 @@ select {
   .safe-pwa-bottom {
     padding-bottom: max(1rem, env(safe-area-inset-bottom));
   }
+
+  .sedona-audio-range {
+    --audio-progress: 0%;
+    height: 24px;
+    cursor: pointer;
+    appearance: none;
+    background: transparent;
+  }
+
+  .sedona-audio-range::-webkit-slider-runnable-track {
+    height: 7px;
+    border-radius: 999px;
+    background: linear-gradient(
+      to right,
+      #b85028 0%,
+      #b85028 var(--audio-progress),
+      #e8dfd1 var(--audio-progress),
+      #e8dfd1 100%
+    );
+  }
+
+  .sedona-audio-range::-webkit-slider-thumb {
+    width: 24px;
+    height: 24px;
+    margin-top: -8.5px;
+    appearance: none;
+    border-radius: 999px;
+    background: #b85028;
+    box-shadow: 0 7px 16px -8px rgba(48, 30, 16, 0.7);
+  }
+
+  .sedona-audio-range::-moz-range-track {
+    height: 7px;
+    border-radius: 999px;
+    background: #e8dfd1;
+  }
+
+  .sedona-audio-range::-moz-range-progress {
+    height: 7px;
+    border-radius: 999px;
+    background: #b85028;
+  }
+
+  .sedona-audio-range::-moz-range-thumb {
+    width: 24px;
+    height: 24px;
+    border: 0;
+    border-radius: 999px;
+    background: #b85028;
+    box-shadow: 0 7px 16px -8px rgba(48, 30, 16, 0.7);
+  }
 }

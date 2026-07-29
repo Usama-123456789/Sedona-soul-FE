@@ -1,8 +1,9 @@
 import Link from "next/link";
-import { ArrowRight, Check, Heart, Shield } from "lucide-react";
+import { ArrowRight, Check, Shield } from "lucide-react";
 
 import { PageShell } from "@/components/layouts/page-shell";
 import { GreetingHeader } from "@/components/shared/greeting-header";
+import { AudiobookResumeCard } from "@/components/user/audiobook-resume-card";
 
 const stats = [
   { value: "12", label: "day regulation streak", tone: "text-[#B04F24]" },
@@ -104,6 +105,8 @@ export default function HomePage() {
             ))}
           </div>
         </section>
+
+        <AudiobookResumeCard />
 
         <Link
           className="flex items-center gap-4 rounded-[22px] border border-[#E2E6EE] bg-[#EEF0F4] px-5 py-4 min-[575px]:col-span-2"
