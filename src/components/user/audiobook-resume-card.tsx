@@ -27,13 +27,23 @@ const getFallbackLabel = (chapter: UserAudioChapter | null) => {
   return `Start listening · ${chapter.title}`;
 };
 
-export function AudiobookResumeCard() {
-  const [resume, setResume] = useState<AudioResumeResponse | null>(null);
+export function AudiobookResumeCard({ initialResume }: { initialResume?: AudioResumeResponse | null }) {
+  const [resume, setResume] = useState<AudioResumeResponse | null>(initialResume ?? null);
   const [firstChapter, setFirstChapter] = useState<UserAudioChapter | null>(null);
-  const [isLoading, setIsLoading] = useState(true);
+  const [isLoading, setIsLoading] = useState(!initialResume);
   const [isUnavailable, setIsUnavailable] = useState(false);
 
   useEffect(() => {
+    if (initialResume !== undefined) {
+      setResume(initialResume);
+      setIsLoading(false);
+
+      if (initialResume?.chapter) {
+        setFirstChapter(null);
+        return;
+      }
+    }
+
     let cancelled = false;
 
     const loadResume = async () => {
@@ -72,7 +82,7 @@ export function AudiobookResumeCard() {
     return () => {
       cancelled = true;
     };
-  }, []);
+  }, [initialResume]);
 
   const cardState = useMemo(() => {
     const chapter = resume?.chapter ?? firstChapter;
