@@ -1,9 +1,17 @@
 import { redirect } from "next/navigation";
+import { cookies } from "next/headers";
 
 import { auth } from "@/auth";
 import { getBackendCurrentUser, syncBackendUser } from "@/lib/auth/backend-auth";
 import { getRoleForEmail } from "@/lib/auth/admin";
-import { adminRoot, onboardingRoot, signInUrl, userAppRoot } from "@/lib/auth/routes";
+import {
+  adminRoot,
+  entrySafetyCompleteCookieName,
+  entrySafetyRoot,
+  onboardingRoot,
+  signInUrl,
+  userAppRoot,
+} from "@/lib/auth/routes";
 
 export default async function AuthRedirectPage() {
   const session = await auth();
@@ -23,6 +31,12 @@ export default async function AuthRedirectPage() {
       redirectTarget = adminRoot;
     } else if (!user.onboardingComplete || !user.baselineCompleted) {
       redirectTarget = onboardingRoot;
+    } else {
+      const cookieStore = await cookies();
+
+      if (cookieStore.get(entrySafetyCompleteCookieName)?.value !== "true") {
+        redirectTarget = entrySafetyRoot;
+      }
     }
   } catch (error) {
     console.error("Backend auth sync failed", error);

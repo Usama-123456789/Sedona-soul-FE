@@ -4,8 +4,10 @@ import { NextResponse } from "next/server";
 import {
   adminRoot,
   authRedirectRoot,
+  entrySafetyRoot,
   onboardingCompleteCookieName,
   onboardingRoot,
+  safetyLockCookieName,
   signInUrl,
   userAppRoot,
 } from "@/lib/auth/routes";
@@ -36,6 +38,14 @@ export function hasCompletedOnboarding(request: NextRequest) {
   return request.cookies.get(onboardingCompleteCookieName)?.value === "true";
 }
 
+export function hasSafetyLock(request: NextRequest) {
+  return request.cookies.get(safetyLockCookieName)?.value === "true";
+}
+
+export function isEntrySafetyRoute(pathname: string) {
+  return pathname === entrySafetyRoot;
+}
+
 export function buildSignInRedirect(request: NextRequest) {
   const redirectUrl = new URL(signInUrl, request.url);
   redirectUrl.searchParams.set("redirect_url", request.url);
@@ -57,4 +67,8 @@ export function buildUserAppRootRedirect(request: NextRequest) {
 
 export function buildOnboardingRedirect(request: NextRequest) {
   return NextResponse.redirect(new URL(onboardingRoot, request.url));
+}
+
+export function buildEntrySafetyRedirect(request: NextRequest) {
+  return NextResponse.redirect(new URL(entrySafetyRoot, request.url));
 }

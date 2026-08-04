@@ -6,7 +6,13 @@ import { useRouter } from "next/navigation";
 import { LoaderCircle } from "lucide-react";
 
 import { Button } from "@/components/ui/button";
-import { onboardingCompleteCookieName, userAppRoot } from "@/lib/auth/routes";
+import {
+  entrySafetyCompleteCookieName,
+  entrySafetyRoot,
+  onboardingCompleteCookieName,
+  userAppRoot,
+} from "@/lib/auth/routes";
+import { setSafetyLock } from "@/lib/safety/safety-lock";
 import { cn } from "@/lib/utils";
 
 type OnboardingStep = 0 | 1 | 2 | 3;
@@ -151,7 +157,8 @@ export function OnboardingForm() {
       }
 
       markOnboardingComplete();
-      router.push(userAppRoot);
+      setSafetyLock();
+      router.push(entrySafetyRoot);
     } catch (error) {
       console.error(error);
       setIsSaving(false);
@@ -361,13 +368,16 @@ function markOnboardingComplete() {
   const maxAge = 60 * 60 * 24 * 365;
 
   document.cookie = `${onboardingCompleteCookieName}=true; path=/; max-age=${maxAge}; samesite=lax`;
+  document.cookie = `${entrySafetyCompleteCookieName}=; path=/; max-age=0; samesite=lax`;
   window.localStorage.setItem(onboardingCompleteCookieName, "true");
+  window.localStorage.removeItem(entrySafetyCompleteCookieName);
 }
 
 export function OnboardingCompletionLinks() {
   return (
     <div className="hidden">
       <Link href={userAppRoot}>Dashboard</Link>
+      <Link href={entrySafetyRoot}>Entry safety</Link>
       <Link href="/app/today">Safety resources</Link>
     </div>
   );

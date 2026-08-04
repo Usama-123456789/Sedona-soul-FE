@@ -1,6 +1,6 @@
 import { NextResponse } from "next/server";
 
-import { onboardingCompleteCookieName } from "@/lib/auth/routes";
+import { entrySafetyCompleteCookieName, onboardingCompleteCookieName, safetyLockCookieName } from "@/lib/auth/routes";
 
 const cookiesToClear = [
   "authjs.session-token",
@@ -10,15 +10,20 @@ const cookiesToClear = [
   "authjs.csrf-token",
   "__Host-authjs.csrf-token",
   onboardingCompleteCookieName,
+  safetyLockCookieName,
+  entrySafetyCompleteCookieName,
 ];
 
 export async function POST() {
   const response = NextResponse.json({ ok: true });
 
   for (const name of cookiesToClear) {
+    const isClientCookie =
+      name === onboardingCompleteCookieName || name === safetyLockCookieName || name === entrySafetyCompleteCookieName;
+
     response.cookies.set(name, "", {
       expires: new Date(0),
-      httpOnly: name !== onboardingCompleteCookieName,
+      httpOnly: !isClientCookie,
       maxAge: 0,
       path: "/",
       sameSite: "lax",

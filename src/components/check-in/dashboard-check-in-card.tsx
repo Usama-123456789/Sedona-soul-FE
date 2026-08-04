@@ -78,6 +78,22 @@ export function DashboardCheckInCard({
       };
     }
 
+    if (todaySession.status === "safety_exited") {
+      return {
+        cta: "Review safety resources",
+        eyebrow: "Safety first",
+        title: "Safety resources are open.",
+      };
+    }
+
+    if (todaySession.pacing.answer === "hard_day") {
+      return {
+        cta: "Open support tools",
+        eyebrow: "Hold position",
+        title: "Today is for regulation.",
+      };
+    }
+
     if (todaySession.status === "completed") {
       return {
         cta: "View today's check-in",

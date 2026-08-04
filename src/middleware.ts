@@ -3,11 +3,14 @@ import { NextResponse } from "next/server";
 
 import {
   buildAdminRootRedirect,
+  buildEntrySafetyRedirect,
   buildSignedInPublicRedirect,
   buildSignInRedirect,
+  hasSafetyLock,
   isAdminRoute,
   isAuthRedirectRoute,
   isAuthRoute,
+  isEntrySafetyRoute,
   isOnboardingRoute,
   isUserAppRoute,
 } from "@/lib/auth/route-guards";
@@ -48,6 +51,15 @@ export default function middleware(request: NextRequest) {
 
   if ((isUserAppRoute(pathname) || isAdminRoute(pathname)) && !hasSessionCookie) {
     return buildSignInRedirect(request);
+  }
+
+  if (
+    request.method === "GET" &&
+    isUserAppRoute(pathname) &&
+    hasSafetyLock(request) &&
+    !isEntrySafetyRoute(pathname)
+  ) {
+    return buildEntrySafetyRedirect(request);
   }
 
   return NextResponse.next();

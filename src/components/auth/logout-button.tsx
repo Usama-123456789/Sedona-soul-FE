@@ -3,7 +3,12 @@
 import { useState } from "react";
 import { LoaderCircle, LogOut } from "lucide-react";
 import { Button, type ButtonProps } from "@/components/ui/button";
-import { onboardingCompleteCookieName, signInUrl } from "@/lib/auth/routes";
+import {
+  entrySafetyCompleteCookieName,
+  onboardingCompleteCookieName,
+  safetyLockCookieName,
+  signInUrl,
+} from "@/lib/auth/routes";
 import { cn } from "@/lib/utils";
 
 interface LogoutButtonProps extends ButtonProps {
@@ -60,6 +65,8 @@ function clearBrowserSession() {
   }
 
   expireCookie(onboardingCompleteCookieName);
+  expireCookie(safetyLockCookieName);
+  expireCookie(entrySafetyCompleteCookieName);
   expireCookie("authjs.session-token");
   expireCookie("__Secure-authjs.session-token");
   expireCookie("authjs.callback-url");

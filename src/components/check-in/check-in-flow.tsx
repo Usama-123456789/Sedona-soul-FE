@@ -1,7 +1,8 @@
 "use client";
 
 import Link from "next/link";
-import { useEffect, useState } from "react";
+import { useRouter } from "next/navigation";
+import { useCallback, useEffect, useState } from "react";
 import {
   AlertTriangle,
   ArrowRight,
@@ -9,7 +10,6 @@ import {
   HeartPulse,
   Loader2,
   MessageCircle,
-  Phone,
   RotateCcw,
   Shield,
   Sparkles,
@@ -30,6 +30,7 @@ import {
 } from "@/lib/api/check-ins";
 import { useToast } from "@/hooks/use-toast";
 import { cn } from "@/lib/utils";
+import { clearSafetyLock, completeEntrySafetyGate, setSafetyLock } from "@/lib/safety/safety-lock";
 import type {
   CheckInAnswersPayload,
   CheckInNextStep,
@@ -46,6 +47,12 @@ type StepState = {
   dailySessionId: string | null;
   nextStep: CheckInNextStep | null;
 };
+
+type CheckInFlowProps = {
+  mode?: "daily" | "entry";
+};
+
+type SessionContext = "daily" | "entry";
 
 const safetyFieldMap: Record<string, keyof SafetyAnswersPayload> = {
   addiction_sobriety: "addictionSobriety",
@@ -320,30 +327,56 @@ const normalizeStepFromDashboard = async (): Promise<StepState> => {
   };
 };
 
-export function CheckInFlow() {
+export function CheckInFlow({ mode = "daily" }: CheckInFlowProps) {
+  const router = useRouter();
   const [state, setState] = useState<StepState>({ dailySessionId: null, nextStep: null });
   const [isLoading, setIsLoading] = useState(true);
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const { toast } = useToast();
 
-  const loadInitialState = async () => {
+  const loadInitialState = useCallback(async () => {
     setIsLoading(true);
     setError(null);
 
     try {
-      const nextState = await normalizeStepFromDashboard();
-      setState(nextState);
+      if (mode === "entry") {
+        const result = await startDailyCheckIn("entry_safety");
+
+        setSafetyLock();
+
+        setState({
+          dailySessionId: result.dailySession.id,
+          nextStep:
+            result.dailySession.status === "safety_exited"
+              ? {
+                  nextScreen: "safety_resources",
+                  resources:
+                    result.nextStep.nextScreen === "safety_resources" ? result.nextStep.resources : undefined,
+                }
+              : getSafetyQuestionsStep(),
+        });
+      } else {
+        const nextState = await normalizeStepFromDashboard();
+
+        if (nextState.nextStep?.nextScreen === "safety_resources") {
+          setSafetyLock();
+        } else {
+          clearSafetyLock();
+        }
+
+        setState(nextState);
+      }
     } catch (loadError) {
       setError(getErrorMessage(loadError, "We could not load today's session."));
     } finally {
       setIsLoading(false);
     }
-  };
+  }, [mode]);
 
   useEffect(() => {
     void loadInitialState();
-  }, []);
+  }, [loadInitialState]);
 
   const startSession = async () => {
     setIsSubmitting(true);
@@ -366,7 +399,32 @@ export function CheckInFlow() {
     }
   };
 
-  const updateFromResult = (result: DailySessionResponse) => {
+  const completeEntryAndGoHome = async () => {
+    await completeEntrySafetyGate();
+    router.replace("/app/home");
+    router.refresh();
+  };
+
+  const updateFromResult = async (result: DailySessionResponse) => {
+    if (result.nextStep.nextScreen === "safety_resources") {
+      setSafetyLock();
+    } else {
+      clearSafetyLock();
+    }
+
+    if (mode === "entry") {
+      if (result.nextStep.nextScreen === "safety_resources") {
+        setState({
+          dailySessionId: result.dailySession.id,
+          nextStep: result.nextStep,
+        });
+        return;
+      }
+
+      await completeEntryAndGoHome();
+      return;
+    }
+
     setState({
       dailySessionId: result.dailySession.id,
       nextStep: result.nextStep,
@@ -376,6 +434,7 @@ export function CheckInFlow() {
   const routeFromBackendError = async (error: unknown, fallback: string) => {
     if (error instanceof FrontendApiError) {
       if (error.code === "DAILY_SESSION_SAFETY_NOT_CLEAR") {
+        setSafetyLock();
         setState((current) => ({
           dailySessionId: current.dailySessionId,
           nextStep: getSafetyQuestionsStep(),
@@ -410,7 +469,7 @@ export function CheckInFlow() {
     setError(getErrorMessage(error, fallback));
   };
 
-  const continueAfterDigitalAdvisory = () => {
+  const continueAfterDigitalAdvisory = async () => {
     if (!state.dailySessionId) {
       setError("Daily session is missing. Please restart today's check-in.");
       return;
@@ -418,6 +477,12 @@ export function CheckInFlow() {
 
     markDigitalAdvisoryAcknowledged(state.dailySessionId);
     setError(null);
+
+    if (mode === "entry") {
+      await completeEntryAndGoHome();
+      return;
+    }
+
     setState({
       dailySessionId: state.dailySessionId,
       nextStep: getPacingQuestionStep(),
@@ -426,7 +491,12 @@ export function CheckInFlow() {
 
   if (isLoading) {
     return (
-      <SessionShell eyebrow="Today" title="Daily check-in" description="Finding the right place to begin.">
+      <SessionShell
+        context={mode}
+        eyebrow={mode === "entry" ? "Safety gate" : "Today"}
+        title={mode === "entry" ? "Before you enter Phase 1" : "Daily check-in"}
+        description="Finding the right place to begin."
+      >
         <LoadingState
           className="border-0 bg-white/92"
           description="Loading your safety gate and today's session state."
@@ -438,7 +508,12 @@ export function CheckInFlow() {
 
   if (error) {
     return (
-      <SessionShell eyebrow="Today" title="Daily check-in" description="Something interrupted the check-in flow.">
+      <SessionShell
+        context={mode}
+        eyebrow={mode === "entry" ? "Safety gate" : "Today"}
+        title={mode === "entry" ? "Safety check unavailable" : "Daily check-in"}
+        description="Something interrupted the check-in flow."
+      >
         <ErrorState
           description={error}
           onRetry={loadInitialState}
@@ -456,6 +531,7 @@ export function CheckInFlow() {
   return (
     <SessionStepRenderer
       dailySessionId={state.dailySessionId}
+      context={mode}
       isSubmitting={isSubmitting}
       nextStep={state.nextStep}
       onDigitalAdvisoryContinue={continueAfterDigitalAdvisory}
@@ -469,6 +545,7 @@ export function CheckInFlow() {
 }
 
 function SessionStepRenderer({
+  context,
   dailySessionId,
   isSubmitting,
   nextStep,
@@ -479,20 +556,22 @@ function SessionStepRenderer({
   setIsSubmitting,
   updateFromResult,
 }: {
+  context: SessionContext;
   dailySessionId: string | null;
   isSubmitting: boolean;
   nextStep: CheckInNextStep;
-  onDigitalAdvisoryContinue: () => void;
+  onDigitalAdvisoryContinue: () => Promise<void>;
   onDashboardRefresh: () => Promise<void>;
   routeFromBackendError: (error: unknown, fallback: string) => Promise<void>;
   setError: (error: string | null) => void;
   setIsSubmitting: (isSubmitting: boolean) => void;
-  updateFromResult: (result: DailySessionResponse) => void;
+  updateFromResult: (result: DailySessionResponse) => Promise<void>;
 }) {
   if (nextStep.nextScreen === "safety_questions") {
     return (
       <SafetyQuestionsScreen
         dailySessionId={dailySessionId}
+        context={context}
         isSubmitting={isSubmitting}
         questions={nextStep.questionSet.questions}
         setError={setError}
@@ -504,7 +583,7 @@ function SessionStepRenderer({
   }
 
   if (nextStep.nextScreen === "safety_resources") {
-    return <SafetyResourcesScreen resources={nextStep.resources} />;
+    return <SafetyResourcesScreen context={context} resources={nextStep.resources} />;
   }
 
   if (nextStep.nextScreen === "digital_safety_advisory") {
@@ -563,15 +642,19 @@ function SessionStepRenderer({
 
 function SessionShell({
   children,
+  context = "daily",
   description,
   eyebrow,
   title,
 }: {
   children: React.ReactNode;
+  context?: SessionContext;
   description: string;
   eyebrow: string;
   title: string;
 }) {
+  const closeHref = context === "entry" ? "/app/entry-safety" : "/app/home";
+
   return (
     <div className="mx-auto flex min-h-[calc(100dvh-7rem)] w-full max-w-[760px] flex-col">
       <div className="flex items-center justify-between gap-4">
@@ -588,7 +671,7 @@ function SessionShell({
           className="h-12 w-12 shrink-0 rounded-full bg-white p-0 text-sedona-stone shadow-card hover:bg-white"
           variant="outline"
         >
-          <Link href="/app/home">
+          <Link href={closeHref}>
             <X aria-hidden="true" size={22} strokeWidth={2} />
           </Link>
         </Button>
@@ -627,6 +710,7 @@ function StartSessionScreen({ isSubmitting, onStart }: { isSubmitting: boolean; 
 }
 
 function SafetyQuestionsScreen({
+  context,
   dailySessionId,
   isSubmitting,
   questions,
@@ -635,13 +719,14 @@ function SafetyQuestionsScreen({
   routeFromBackendError,
   updateFromResult,
 }: {
+  context: SessionContext;
   dailySessionId: string | null;
   isSubmitting: boolean;
   questions: SafetyGateQuestion[];
   setError: (error: string | null) => void;
   setIsSubmitting: (isSubmitting: boolean) => void;
   routeFromBackendError: (error: unknown, fallback: string) => Promise<void>;
-  updateFromResult: (result: DailySessionResponse) => void;
+  updateFromResult: (result: DailySessionResponse) => Promise<void>;
 }) {
   const [answers, setAnswers] = useState<Partial<Record<keyof SafetyAnswersPayload, DigitalSafetyAnswer>>>({});
 
@@ -668,7 +753,7 @@ function SafetyQuestionsScreen({
         physicalSafety: (answers.physicalSafety as SafetyAnswersPayload["physicalSafety"]) ?? "no",
         suicidalSelfHarm: (answers.suicidalSelfHarm as SafetyAnswersPayload["suicidalSelfHarm"]) ?? "no",
       });
-      updateFromResult(result);
+      await updateFromResult(result);
     } catch (submitError) {
       await routeFromBackendError(submitError, "We could not save the safety answers.");
     } finally {
@@ -678,6 +763,7 @@ function SafetyQuestionsScreen({
 
   return (
     <SessionShell
+      context={context}
       description="We ask this every session. If there is danger, the workbook pauses and resources come first."
       eyebrow="Safety gate"
       title="Before we begin, are you safe right now?"
@@ -791,9 +877,20 @@ function AnswerButton({
   );
 }
 
-function SafetyResourcesScreen({ resources }: { resources?: SafetyResource[] }) {
+function SafetyResourcesScreen({ context, resources }: { context: SessionContext; resources?: SafetyResource[] }) {
   const [fallbackResources, setFallbackResources] = useState<SafetyResource[]>([]);
   const visibleResources = resources?.length ? resources : fallbackResources.length ? fallbackResources : safetyFallbackResources;
+  const sortedResources = visibleResources.slice().sort((a, b) => {
+    if (a.category === "domestic_violence" && b.category !== "domestic_violence") {
+      return -1;
+    }
+
+    if (b.category === "domestic_violence" && a.category !== "domestic_violence") {
+      return 1;
+    }
+
+    return a.priority - b.priority;
+  });
 
   useEffect(() => {
     if (resources?.length) {
@@ -820,39 +917,54 @@ function SafetyResourcesScreen({ resources }: { resources?: SafetyResource[] }) 
   }, [resources]);
 
   return (
-    <SessionShell
-      description="The tools in this app are not what you need in this moment. Please reach one of these directly."
-      eyebrow="First, your safety"
-      title="Safety comes first."
-    >
-      <div className="rounded-[28px] bg-sedona-pine p-5 text-[#F7F0E7] shadow-card min-[575px]:p-8">
-        <div className="space-y-4">
-          {visibleResources
-            .slice()
-            .sort((a, b) => a.priority - b.priority)
-            .map((resource) => (
+    <div className="relative mx-[calc(50%-50vw)] -my-10 flex min-h-dvh bg-sedona-pine px-5 py-10 text-[#F7F0E7] pwa:mx-0 pwa:my-0 pwa:min-h-full pwa:px-10 pwa:py-14 lg:px-16">
+      <Link
+        aria-label="Close safety resources"
+        className="absolute right-5 top-6 flex h-11 w-11 items-center justify-center rounded-full bg-white/12 text-[#D8D1C4] transition-colors hover:bg-white/18 hover:text-white pwa:right-10 pwa:top-10"
+        href={context === "entry" ? "/app/entry-safety" : "/app/today"}
+      >
+        <X aria-hidden="true" size={22} strokeWidth={2} />
+      </Link>
+
+      <section className="mx-auto flex w-full max-w-[930px] flex-col justify-center py-8 pwa:max-w-[820px]">
+        <div>
+          <h1 className="font-serif text-[42px] font-normal leading-[1.05] text-[#F7F0E7] min-[575px]:text-[56px]">
+            First, your safety.
+          </h1>
+          <p className="mt-6 max-w-[760px] text-base font-medium leading-7 text-[#D8D1C4]/78 min-[575px]:text-lg min-[575px]:leading-8">
+            The tools in this app are not what you need in this moment. Please reach one of these directly.
+            They&apos;re free, confidential, and there right now.
+          </p>
+        </div>
+
+        <div className="mt-9 space-y-4">
+          {sortedResources.map((resource) => (
               <div
-                className="flex flex-col gap-4 rounded-[20px] border border-white/15 bg-white/[0.06] p-5 min-[575px]:flex-row min-[575px]:items-center"
+                className="flex flex-col gap-4 rounded-[22px] border border-white/15 bg-white/[0.07] p-5 min-[575px]:flex-row min-[575px]:items-center min-[575px]:px-7"
                 key={resource.id}
               >
                 <div className="min-w-0 flex-1">
-                  <h2 className="text-xl font-semibold leading-tight">{resource.title}</h2>
-                  <p className="mt-2 text-sm leading-6 text-[#D8D1C4]/78">{resource.description}</p>
+                  <h2 className="text-lg font-bold leading-tight text-[#F7F0E7] min-[575px]:text-xl">
+                    {resource.title}
+                  </h2>
+                  <p className="mt-1 text-sm font-medium leading-6 text-[#D8D1C4]/70">{resource.description}</p>
                   {resource.textInstruction ? (
-                    <p className="mt-1 text-sm font-medium text-[#E7B27E]">{resource.textInstruction}</p>
+                    <p className="text-sm font-medium text-[#D8D1C4]/70">{resource.textInstruction}</p>
                   ) : null}
                 </div>
                 {resource.phone ? (
                   <a
-                    className="inline-flex min-h-12 shrink-0 items-center justify-center gap-2 rounded-full bg-[#E7B27E] px-5 text-base font-bold text-[#2A1C12]"
+                    className={cn(
+                      "inline-flex min-h-12 shrink-0 items-center justify-center gap-2 rounded-full px-6 text-base font-extrabold text-[#2A1C12]",
+                      resource.category === "emergency" ? "bg-[#D5633E] text-white" : "bg-[#E7B27E]",
+                    )}
                     href={`tel:${resource.phone.replace(/\D/g, "")}`}
                   >
-                    <Phone aria-hidden="true" size={18} strokeWidth={2} />
                     {resource.phone}
                   </a>
                 ) : resource.url ? (
                   <a
-                    className="inline-flex min-h-12 shrink-0 items-center justify-center rounded-full bg-[#E7B27E] px-5 text-sm font-bold text-[#2A1C12]"
+                    className="inline-flex min-h-12 shrink-0 items-center justify-center rounded-full bg-[#E7B27E] px-6 text-sm font-bold text-[#2A1C12]"
                     href={resource.url}
                     rel="noreferrer"
                     target="_blank"
@@ -863,14 +975,19 @@ function SafetyResourcesScreen({ resources }: { resources?: SafetyResource[] }) 
               </div>
             ))}
         </div>
-        <p className="mt-8 font-serif text-xl italic leading-8 text-[#F7F0E7]/78">
+
+        <p className="mt-9 font-serif text-xl italic leading-8 text-[#F7F0E7]/78">
           This work will be here when you&apos;re ready. It is not going anywhere.
         </p>
-        <Button asChild className="mt-6 min-h-14 w-full rounded-[18px] bg-white/10 text-white hover:bg-white/15">
-          <Link href="/app/home">I&apos;m safe now - go back</Link>
+
+        <Button
+          asChild
+          className="mt-7 min-h-14 w-full rounded-[18px] border border-white/15 bg-white/10 text-base font-bold text-white hover:bg-white/15"
+        >
+          <Link href={context === "entry" ? "/app/entry-safety" : "/app/today"}>I&apos;m safe now - go back</Link>
         </Button>
-      </div>
-    </SessionShell>
+      </section>
+    </div>
   );
 }
 
@@ -881,7 +998,7 @@ function DigitalSafetyAdvisoryScreen({
   setError,
 }: {
   dailySessionId: string | null;
-  onContinue: () => void;
+  onContinue: () => Promise<void>;
   resources?: SafetyResource[];
   setError: (error: string | null) => void;
 }) {
@@ -898,7 +1015,9 @@ function DigitalSafetyAdvisoryScreen({
 
     try {
       markDigitalAdvisoryAcknowledged(dailySessionId);
-      onContinue();
+      await onContinue();
+    } catch {
+      setError("We could not continue after the digital safety advisory.");
     } finally {
       setIsContinuing(false);
     }
@@ -955,7 +1074,7 @@ function PacingQuestionScreen({
   setError: (error: string | null) => void;
   setIsSubmitting: (isSubmitting: boolean) => void;
   routeFromBackendError: (error: unknown, fallback: string) => Promise<void>;
-  updateFromResult: (result: DailySessionResponse) => void;
+  updateFromResult: (result: DailySessionResponse) => Promise<void>;
 }) {
   const submitPacing = async (answer: PacingAnswer) => {
     if (!dailySessionId) {
@@ -968,7 +1087,7 @@ function PacingQuestionScreen({
 
     try {
       const result = await submitPacingAnswer(dailySessionId, answer);
-      updateFromResult(result);
+      await updateFromResult(result);
     } catch (submitError) {
       await routeFromBackendError(submitError, "We could not save today's pacing answer.");
     } finally {
@@ -1123,7 +1242,7 @@ function CheckInQuestionsScreen({
   setError: (error: string | null) => void;
   setIsSubmitting: (isSubmitting: boolean) => void;
   routeFromBackendError: (error: unknown, fallback: string) => Promise<void>;
-  updateFromResult: (result: DailySessionResponse) => void;
+  updateFromResult: (result: DailySessionResponse) => Promise<void>;
 }) {
   const resolvedQuestions = questions.length ? questions : defaultCheckInQuestions;
   const [answers, setAnswers] = useState<CheckInAnswersPayload>({
@@ -1149,7 +1268,7 @@ function CheckInQuestionsScreen({
         ...answers,
         privateNote: answers.privateNote?.trim() || undefined,
       });
-      updateFromResult(result);
+      await updateFromResult(result);
     } catch (submitError) {
       await routeFromBackendError(submitError, "We could not save today's check-in.");
     } finally {
